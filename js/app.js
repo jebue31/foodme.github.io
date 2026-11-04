@@ -21,6 +21,7 @@ const state = {
   week: startOfWeek(new Date()),
   draft: null,
   query: "",
+  profile: undefined, // undefined = not loaded yet, null = no name saved
 };
 let renderToken = 0;
 
@@ -85,6 +86,19 @@ function resort() {
   state.recipes.sort((a, b) => a.title.localeCompare(b.title));
 }
 
+const displayName = () => state.profile?.display_name ?? state.session?.user?.email?.split("@")[0] ?? "there";
+
+// The greeting shouldn't take the whole app down if the profile can't load.
+async function ensureProfile() {
+  if (state.profile !== undefined) return;
+  try {
+    state.profile = await api.getProfile();
+  } catch (err) {
+    console.error(err);
+    state.profile = null;
+  }
+}
+
 /* ---------- shell ---------- */
 
 function shell(active, content) {
@@ -98,7 +112,7 @@ function shell(active, content) {
         ${tab("#/plan", "plan", "Plan")}
         ${tab("#/grocery", "grocery", "Grocery")}
       </nav>
-      <button class="link signout" data-action="sign-out">Sign out</button>
+      <a class="hello" href="#/profile" ${active === "profile" ? h`aria-current="page"` : ""}>Hi, ${displayName()}</a>
     </header>
     <main class="page">${content}</main>`.s;
 }
@@ -477,6 +491,126 @@ async function groceryView() {
       </div>`}`);
 }
 
+/* ---------- profile ---------- */
+
+function profileView() {
+  const { email, new_email: pendingEmail } = state.session.user;
+  shell("profile", h`
+    <div class="page-head"><h1>Your profile</h1></div>
+    <div class="profile">
+      <form class="card" id="name-form">
+        <h2>Your name</h2>
+        <label>Shown in your greeting
+          <input name="display_name" required maxlength="50" autocomplete="name" value="${state.profile?.display_name ?? ""}">
+        </label>
+        <button type="submit">Save name</button>
+      </form>
+
+      <form class="card" id="email-form">
+        <h2>Email</h2>
+        ${pendingEmail ? h`<p class="notice">Waiting for you to confirm ${pendingEmail}.</p>` : ""}
+        <label>Email address
+          <input name="email" type="email" required autocomplete="email" value="${email}">
+        </label>
+        <button type="submit">Change email</button>
+      </form>
+
+      <form class="card" id="password-form">
+        <h2>Password</h2>
+        <label>Current password
+          <input name="current" type="password" required autocomplete="current-password">
+        </label>
+        <label>New password
+          <input name="next" type="password" required minlength="8" autocomplete="new-password">
+        </label>
+        <label>New password again
+          <input name="again" type="password" required minlength="8" autocomplete="new-password">
+        </label>
+        <button type="submit">Change password</button>
+      </form>
+
+      <section class="card">
+        <h2>Your data</h2>
+        <p class="muted">Download a copy of all your recipes as a file.</p>
+        <button data-action="export-recipes">Download my recipes</button>
+      </section>
+
+      <section class="card">
+        <h2>Signing out</h2>
+        <p class="muted">Lost a device, or used a shared computer? Sign out everywhere to end every session.</p>
+        <div class="actions">
+          <button data-action="sign-out">Sign out</button>
+          <button data-action="sign-out-all">Sign out everywhere</button>
+        </div>
+      </section>
+
+      <form class="card danger-zone" id="delete-form">
+        <h2>Delete account</h2>
+        <p class="muted">This permanently deletes your account, recipes, meal plans and grocery list. It can't be undone.</p>
+        <label>Password
+          <input name="password" type="password" required autocomplete="current-password">
+        </label>
+        <label>Type DELETE to confirm
+          <input name="confirm" required autocomplete="off">
+        </label>
+        <button class="danger" type="submit">Delete my account</button>
+      </form>
+    </div>`);
+}
+
+async function submitName(form) {
+  const name = new FormData(form).get("display_name").trim();
+  if (!name) return toast("Enter a name.");
+  await busy(form.querySelector("[type=submit]"), async () => {
+    state.profile = await api.saveProfile(state.session.user.id, name);
+    toast("Name saved.");
+    render();
+  });
+}
+
+async function submitEmail(form) {
+  const email = new FormData(form).get("email").trim();
+  if (email.toLowerCase() === state.session.user.email.toLowerCase()) return toast("That's already your email.");
+  await busy(form.querySelector("[type=submit]"), async () => {
+    await api.changeEmail(email);
+    toast("Check your email to confirm the change. It may need confirming at both addresses.");
+  });
+}
+
+async function submitPassword(form) {
+  const { current, next, again } = Object.fromEntries(new FormData(form));
+  if (next !== again) return toast("The new passwords don't match.");
+  if (next === current) return toast("Choose a password you aren't already using.");
+  await busy(form.querySelector("[type=submit]"), async () => {
+    await api.confirmPassword(state.session.user.email, current);
+    await api.setPassword(next);
+    form.reset();
+    toast("Password changed.");
+  });
+}
+
+async function submitDelete(form) {
+  const { password, confirm: typed } = Object.fromEntries(new FormData(form));
+  if (typed.trim() !== "DELETE") return toast("Type DELETE to confirm.");
+  await busy(form.querySelector("[type=submit]"), async () => {
+    await api.confirmPassword(state.session.user.email, password);
+    await api.deleteAccount();
+    await api.signOut();
+    history.replaceState(null, "", location.pathname);
+    toast("Your account has been deleted.");
+  });
+}
+
+async function exportRecipes() {
+  const recipes = await ensureRecipes();
+  const file = new Blob([JSON.stringify(recipes, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(file);
+  link.download = `foodme-recipes-${dayKey(new Date())}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 /* ---------- routing ---------- */
 
 function notFound() {
@@ -487,8 +621,10 @@ const render = guarded(async () => {
   const token = ++renderToken;
   if (state.recovering) return authView("newpass");
   if (!state.session) return authView();
+  await ensureProfile();
   const [, section, id, action] = location.hash.split("/");
   if (token !== renderToken) return;
+  if (section === "profile") return profileView();
   if (section === "plan") return planView();
   if (section === "grocery") return groceryView();
   if (section === "recipes" && id === "new") return recipeForm();
@@ -502,6 +638,8 @@ const render = guarded(async () => {
 const actions = {
   "auth-mode": (el) => authView(el.dataset.mode),
   "sign-out": () => api.signOut(),
+  "sign-out-all": () => api.signOut("global"),
+  "export-recipes": () => exportRecipes(),
   "enter-by-hand": (el) => {
     state.draft = { source_url: el.dataset.url };
     go("#/recipes/new");
@@ -553,6 +691,10 @@ const forms = {
   "auth-form": submitAuth,
   "import-form": submitImport,
   "recipe-form": submitRecipe,
+  "name-form": submitName,
+  "email-form": submitEmail,
+  "password-form": submitPassword,
+  "delete-form": submitDelete,
   "item-form": async (form) => {
     await api.addGrocery([{ name: form.name.value.trim() }]);
     render();
@@ -608,6 +750,7 @@ if (!api.configured) {
     if (session?.user?.id !== wasUser) {
       state.recipes = null;
       state.draft = null;
+      state.profile = undefined;
     }
     if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
     if (event === "SIGNED_IN" && wasUser === session?.user?.id) return; // tab refocus

@@ -23,6 +23,8 @@
     in(k, v) { this.filters.push((r) => v.includes(r[k])); return this; }
     order(k) { this.sort = k; return this; }
     single() { this.one = true; return this; }
+    maybeSingle() { this.one = true; return this; }
+    upsert(p) { this.op = "upsert"; this.payload = p; return this; }
     then(ok, fail) { return Promise.resolve().then(() => this.run()).then(ok, fail); }
     run() {
       const session = getSession();
@@ -30,9 +32,15 @@
       if (!session) return { data: null, error: { message: "not signed in" } };
       const user_id = session.user.id;
       const db = load();
-      const mine = (r) => r.user_id === user_id && this.filters.every((f) => f(r));
+      db[this.table] ??= [];
+      if (window.fakeMissing === this.table) return { data: null, error: { message: "table missing" } };
+      const mine = (r) => (r.user_id ?? r.id) === user_id && this.filters.every((f) => f(r));
       let rows;
-      if (this.op === "insert") {
+      if (this.op === "upsert") {
+        db[this.table] = db[this.table].filter((r) => r.id !== this.payload.id);
+        db[this.table].push(this.payload);
+        rows = [this.payload];
+      } else if (this.op === "insert") {
         const defaults = this.table === "grocery_items" ? { checked: false, from_plan: false, amount: "" } : {};
         rows = this.payload.map((p) => ({ id: uid(), user_id, created_at: new Date().toISOString(), ...defaults, ...p }));
         db[this.table].push(...rows);
@@ -77,8 +85,33 @@
           return { data: { session }, error: null };
         },
         async resetPasswordForEmail() { return { data: {}, error: null }; },
-        async updateUser() { return { data: {}, error: null }; },
-        async signOut() { setSession("SIGNED_OUT", null); return { error: null }; },
+        async updateUser(attrs) {
+          const db = load();
+          const session = getSession();
+          if (attrs.password) db.users[session.user.email].password = attrs.password;
+          if (attrs.email) session.user.new_email = attrs.email;
+          save(db);
+          localStorage.setItem("fake-session", JSON.stringify(session));
+          window.fakeUpdates = [...(window.fakeUpdates ?? []), attrs];
+          emit("USER_UPDATED", session);
+          return { data: { user: session.user }, error: null };
+        },
+        async signOut(opts) {
+          window.fakeSignOutScope = opts?.scope;
+          setSession("SIGNED_OUT", null);
+          return { error: null };
+        },
+      },
+      async rpc(name) {
+        const db = load();
+        const { id, email } = getSession().user;
+        if (name === "delete_my_account") {
+          delete db.users[email];
+          for (const t of ["recipes", "meal_plan", "grocery_items"]) db[t] = db[t].filter((r) => r.user_id !== id);
+          db.profiles = (db.profiles ?? []).filter((r) => r.id !== id);
+          save(db);
+        }
+        return { data: null, error: null };
       },
       from: (t) => new Query(t),
       functions: {

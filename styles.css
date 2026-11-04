@@ -87,7 +87,16 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .tabs { display: flex; gap: .25rem; flex: 1; }
 .tab { padding: .4rem .8rem; border-radius: 8px; color: var(--ink); text-decoration: none; }
 .tab[aria-current] { background: var(--accent-soft); font-weight: 600; }
-.signout { font-size: .9rem; }
+.hello {
+  max-width: 11rem; padding: .3rem .6rem; border-radius: 8px; font-size: .92rem; color: var(--ink);
+  text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hello:hover, .hello[aria-current] { background: var(--accent-soft); }
+.profile { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: .75rem; align-items: start; }
+.profile .card { padding: 1rem; display: grid; gap: .75rem; }
+.profile .card p { margin: 0; }
+.profile button { justify-self: start; }
+.danger-zone { border-color: var(--danger); }
 .page { max-width: 960px; margin: 0 auto; padding: 1.25rem 16px 3rem; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .actions { display: flex; gap: .5rem; }

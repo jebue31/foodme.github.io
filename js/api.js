@@ -18,7 +18,21 @@ export const signUp = async (email, password) =>
 export const sendReset = async (email) =>
   unwrap(await sb.auth.resetPasswordForEmail(email, { redirectTo: appUrl() }));
 export const setPassword = async (password) => unwrap(await sb.auth.updateUser({ password }));
-export const signOut = async () => unwrap(await sb.auth.signOut());
+export const signOut = async (scope = "local") => unwrap(await sb.auth.signOut({ scope }));
+
+// Supabase has no "check password" call, so confirm it by signing in again.
+export async function confirmPassword(email, password) {
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) throw new Error("That password isn't correct.");
+}
+export const changeEmail = async (email) =>
+  unwrap(await sb.auth.updateUser({ email }, { emailRedirectTo: appUrl() }));
+export const deleteAccount = async () => unwrap(await sb.rpc("delete_my_account"));
+
+export const getProfile = async () =>
+  unwrap(await sb.from("profiles").select("*").maybeSingle());
+export const saveProfile = async (id, display_name) =>
+  unwrap(await sb.from("profiles").upsert({ id, display_name }).select().single());
 
 export const listRecipes = async () =>
   unwrap(await sb.from("recipes").select("*").order("title"));

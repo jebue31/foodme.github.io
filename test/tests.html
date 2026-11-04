@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>FoodMe parser tests</title><pre id="out"></pre>
+<script type="module">
+import { parseIngredient as p, buildGroceryLines as b, formatQty } from "../js/ingredients.js";
+import { extractRecipe, isoMinutes, safeUrl, clean } from "../supabase/functions/import-recipe/index.ts";
+
+const results = [];
+const eq = (label, got, want) => {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  results.push({ ok, label, got, want });
+};
+const throws = (label, fn) => { try { fn(); results.push({ ok: false, label, got: "no throw" }); } catch { results.push({ ok: true, label }); } };
+
+// ingredient lines
+eq("mixed fraction", p("1 1/2 cups all-purpose flour, sifted"), { qty: 1.5, unit: "cup", name: "all-purpose flour" });
+eq("unicode fraction", p("½ tsp salt"), { qty: .5, unit: "tsp", name: "salt" });
+eq("attached unicode", p("1½ lbs chicken thighs"), { qty: 1.5, unit: "lb", name: "chicken thighs" });
+eq("range uses top", p("2-3 cloves garlic, minced"), { qty: 3, unit: "clove", name: "garlic" });
+eq("range with to", p("2 to 3 carrots"), { qty: 3, unit: null, name: "carrots" });
+eq("parenthetical", p("1 (14 oz) can crushed tomatoes"), { qty: 1, unit: "can", name: "crushed tomatoes" });
+eq("capital T", p("2 T butter"), { qty: 2, unit: "tbsp", name: "butter" });
+eq("lower t", p("1 t vanilla"), { qty: 1, unit: "tsp", name: "vanilla" });
+eq("no qty", p("Salt and pepper to taste"), { qty: null, unit: null, name: "Salt and pepper" });
+eq("word that starts like unit", p("cloves"), { qty: null, unit: null, name: "cloves" });
+eq("c as a word start", p("2 carrots"), { qty: 2, unit: null, name: "carrots" });
+eq("size dropped", p("3 large eggs"), { qty: 3, unit: null, name: "eggs" });
+eq("heading skipped", p("For the sauce:"), null);
+eq("bullet", p("• 1 cup milk"), { qty: 1, unit: "cup", name: "milk" });
+eq("of", p("1 pinch of nutmeg"), { qty: 1, unit: "pinch", name: "nutmeg" });
+eq("decimal", p("0.5 kg potatoes"), { qty: .5, unit: "kg", name: "potatoes" });
+eq("purchase form kept", p("1 lb boneless skinless chicken breast"), { qty: 1, unit: "lb", name: "boneless skinless chicken breast" });
+
+eq("comma adjectives", p("1 lb boneless, skinless chicken breast, cubed"), { qty: 1, unit: "lb", name: "boneless skinless chicken breast" });
+eq("footnote mark", p("3 green onions*"), { qty: 3, unit: null, name: "green onions" });
+eq("to serve", p("lemon wedges, to serve"), { qty: null, unit: null, name: "lemon wedges" });
+eq("to serve no comma", p("caster sugar to serve"), { qty: null, unit: null, name: "caster sugar" });
+eq("plus extra", p("1 tbsp sunflower oil plus a little extra for frying"), { qty: 1, unit: "tbsp", name: "sunflower oil" });
+
+// quantities
+eq("formatQty 1.5", formatQty(1.5), "1 1/2");
+eq("formatQty third", formatQty(.33), "1/3");
+eq("formatQty whole", formatQty(3), "3");
+
+// combining
+eq("same unit sums", b(["1 cup milk", "1/2 cup milk"]), [{ name: "Milk", amount: "1 1/2 cups" }]);
+eq("tbsp+tsp", b(["1 tbsp oil", "3 tsp oil"]), [{ name: "Oil", amount: "2 tbsp" }]);
+eq("tbsp to cups", b(["8 tbsp butter", "8 tbsp butter"]), [{ name: "Butter", amount: "1 cup" }]);
+eq("plural merge", b(["1 egg", "2 large eggs"]), [{ name: "Eggs", amount: "3" }]);
+eq("tomato plural", b(["1 tomato", "2 tomatoes"]), [{ name: "Tomatoes", amount: "3" }]);
+eq("oz to lb", b(["8 oz cheese", "8 oz cheese"]), [{ name: "Cheese", amount: "1 lb" }]);
+eq("metric stays metric", b(["500 g flour", "750 g flour"]), [{ name: "Flour", amount: "1 1/4 kg" }]);
+eq("different kinds kept", b(["2 cups rice", "1 lb rice"]), [{ name: "Rice", amount: "1 lb + 2 cups" }]);
+eq("cloves", b(["2 cloves garlic", "1 clove garlic"]), [{ name: "Garlic", amount: "3 cloves" }]);
+eq("qty-less", b(["salt to taste", "1 tsp salt"]), [{ name: "Salt", amount: "1 tsp" }]);
+eq("sorted", b(["1 pear", "1 apple"]).map((i) => i.name), ["Apple", "Pear"]);
+
+// recipe extraction
+const page = (o) => `<html><script type="application/ld+json">${JSON.stringify(o)}<\/script></html>`;
+eq("basic", extractRecipe(page({ "@type": "Recipe", name: "Soup &amp; Bread", recipeYield: "4 servings", totalTime: "PT1H30M",
+  recipeIngredient: ["1 cup <b>stock</b>"], recipeInstructions: [{ "@type": "HowToStep", text: "Boil." }, "Eat."], image: { url: "https://x.co/a.jpg" } })),
+  { title: "Soup & Bread", servings: 4, minutes: 90, ingredients: ["1 cup stock"], steps: "Boil.\nEat.", image_url: "https://x.co/a.jpg" });
+eq("@graph + type array", extractRecipe(page({ "@graph": [{ "@type": "WebPage" }, { "@type": ["Thing", "Recipe"], name: "G", recipeYield: ["6"], recipeInstructions: "One\nTwo" }] })).steps, "One\nTwo");
+eq("sections", extractRecipe(page({ "@type": "Recipe", name: "S", recipeInstructions: [{ "@type": "HowToSection", name: "A", itemListElement: [{ text: "x" }, { text: "y" }] }] })).steps, "x\ny");
+eq("prep+cook", extractRecipe(page({ "@type": "Recipe", name: "S", prepTime: "PT10M", cookTime: "PT5M" })).minutes, 15);
+eq("bad json skipped", extractRecipe(`<script type="application/ld+json">{oops<\/script>` + page({ "@type": "Recipe", name: "Ok" })).title, "Ok");
+eq("no recipe", extractRecipe(page({ "@type": "Article", name: "No" })), null);
+eq("javascript image dropped", extractRecipe(page({ "@type": "Recipe", name: "S", image: "javascript:alert(1)" })).image_url, null);
+eq("iso days", isoMinutes("P1DT2H"), 1560);
+eq("clean tags", clean("a &lt;b&gt;c&lt;/b&gt; d"), "a c d");
+
+// address safety
+eq("ok url", safeUrl("https://www.example.com/a").hostname, "www.example.com");
+for (const bad of ["ftp://x.com/a", "http://localhost/", "http://127.0.0.1/", "http://2130706433/", "http://[::1]/", "http://169.254.169.254/", "http://a.internal/", "https://x.com:8443/", "https://u:p@x.com/", "http://0x7f.0.0.1/", "nonsense"]) throws("blocked " + bad, () => safeUrl(bad));
+
+const failed = results.filter((r) => !r.ok);
+document.title = failed.length ? `FAIL ${failed.length}` : "PASS";
+document.getElementById("out").textContent = `${results.length - failed.length}/${results.length} passed\n\n` + failed.map((f) => `FAIL ${f.label}\n  got  ${JSON.stringify(f.got)}\n  want ${JSON.stringify(f.want)}`).join("\n");
+</script>

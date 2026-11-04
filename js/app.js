@@ -114,7 +114,7 @@ function shell(active, content) {
       </nav>
       <a class="hello" href="#/profile" ${active === "profile" ? h`aria-current="page"` : ""}>Hi, ${displayName()}</a>
     </header>
-    <main class="page">${content}</main>`.s;
+    <main class="page ${active === "plan" ? "wide" : ""}">${content}</main>`.s;
 }
 
 /* ---------- auth screens ---------- */
@@ -350,6 +350,28 @@ async function submitRecipe(form) {
 
 /* ---------- meal plan ---------- */
 
+function mealChip(m) {
+  return h`
+    <span class="meal" draggable="true" data-meal="${m.id}">
+      <span class="meal-text">
+        <small>${m.slot}</small>
+        <a href="#/recipes/${m.recipe_id}" draggable="false">${recipeById(m.recipe_id)?.title ?? "Recipe"}</a>
+      </span>
+      <button class="x" data-action="remove-meal" data-id="${m.id}" aria-label="Remove from ${m.slot}">×</button>
+    </span>`;
+}
+
+function planRecipes(q = "") {
+  const needle = q.trim().toLowerCase();
+  const found = state.recipes.filter((r) => r.title.toLowerCase().includes(needle));
+  if (found.length) {
+    return h`${found.map((r) => h`<div class="plan-recipe" draggable="true" data-drag-recipe="${r.id}">${r.title}</div>`)}`;
+  }
+  return state.recipes.length
+    ? h`<p class="muted">No recipes match.</p>`
+    : h`<p class="muted"><a href="#/recipes/new">Add your first recipe</a></p>`;
+}
+
 async function planView() {
   const token = renderToken;
   const [, meals] = await Promise.all([
@@ -370,33 +392,42 @@ async function planView() {
       <button data-action="week" data-step="7" aria-label="Next week">›</button>
       <button class="link" data-action="week" data-step="0">This week</button>
     </div>
-    <div class="days">
-      ${days.map((d) => {
-        const key = dayKey(d);
-        return h`
-          <section class="day card ${key === today ? "today" : ""}">
-            <h2>${d.toLocaleDateString(undefined, { weekday: "long" })} <small>${shortDate(d)}</small></h2>
-            ${SLOTS.map((slot) => h`
-              <div class="slot">
-                <span class="slot-name">${slot}</span>
-                <div class="slot-meals">
-                  ${meals.filter((m) => m.day === key && m.slot === slot).map((m) => h`
-                    <span class="meal">
-                      <a href="#/recipes/${m.recipe_id}">${recipeById(m.recipe_id)?.title ?? "Recipe"}</a>
-                      <button class="x" data-action="remove-meal" data-id="${m.id}" aria-label="Remove from ${slot}">×</button>
-                    </span>`)}
-                  <button class="add" data-action="pick" data-day="${key}" data-slot="${slot}"
-                    aria-label="Add ${slot} on ${d.toLocaleDateString(undefined, { weekday: "long" })}">+</button>
-                </div>
-              </div>`)}
-          </section>`;
-      })}
+    <div class="planner">
+      <aside class="plan-recipes card" aria-label="Your recipes">
+        <h2>Recipes</h2>
+        <p class="hint">Drag one onto a day.</p>
+        <input id="plan-search" type="search" placeholder="Search" aria-label="Search recipes">
+        <div id="plan-recipes" class="plan-recipe-list">${planRecipes()}</div>
+      </aside>
+      <div class="days">
+        ${days.map((d) => {
+          const key = dayKey(d);
+          const weekday = d.toLocaleDateString(undefined, { weekday: "long" });
+          const todays = meals.filter((m) => m.day === key)
+            .sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+          return h`
+            <section class="day card ${key === today ? "today" : ""}">
+              <h2>${d.toLocaleDateString(undefined, { weekday: "short" })} <small>${shortDate(d)}</small></h2>
+              <div class="day-meals">
+                ${todays.map(mealChip)}
+                <button class="add" data-action="pick" data-day="${key}" aria-label="Add a meal on ${weekday}">+ Add</button>
+              </div>
+              <div class="drop-zones" aria-hidden="true">
+                ${SLOTS.map((slot) => h`<div class="drop-zone" data-day="${key}" data-slot="${slot}">${slot}</div>`)}
+              </div>
+            </section>`;
+        })}
+      </div>
     </div>
     <dialog id="picker">
       <form method="dialog" class="picker-head">
         <h2 id="picker-title"></h2>
         <button class="x" aria-label="Close">×</button>
       </form>
+      <div class="slot-choice" role="radiogroup" aria-label="Which meal">
+        ${SLOTS.map((slot) => h`
+          <label><input type="radio" name="picker-slot" value="${slot}" ${slot === "dinner" ? "checked" : ""}><span>${slot}</span></label>`)}
+      </div>
       <input id="picker-search" type="search" placeholder="Search recipes" aria-label="Search recipes">
       <div id="picker-list" class="picker-list"></div>
     </dialog>`);
@@ -412,13 +443,12 @@ function pickerList(q = "") {
       : h`<p class="muted">No recipes yet. <a href="#/recipes/new">Add your first one</a>.</p>`).s;
 }
 
-function openPicker(day, slot) {
+function openPicker(day) {
   const dialog = document.getElementById("picker");
   dialog.dataset.day = day;
-  dialog.dataset.slot = slot;
   const [y, m, d] = day.split("-").map(Number);
-  const when = new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long" });
-  document.getElementById("picker-title").textContent = `${when} ${slot}`;
+  document.getElementById("picker-title").textContent =
+    new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   document.getElementById("picker-search").value = "";
   pickerList();
   dialog.showModal();
@@ -655,10 +685,11 @@ const actions = {
     state.week = step ? addDays(state.week, step) : startOfWeek(new Date());
     render();
   },
-  pick: (el) => openPicker(el.dataset.day, el.dataset.slot),
+  pick: (el) => openPicker(el.dataset.day),
   choose: async (el) => {
     const dialog = document.getElementById("picker");
-    await api.addMeal({ day: dialog.dataset.day, slot: dialog.dataset.slot, recipe_id: el.dataset.id });
+    const slot = dialog.querySelector("[name=picker-slot]:checked").value;
+    await api.addMeal({ day: dialog.dataset.day, slot, recipe_id: el.dataset.id });
     dialog.close();
     render();
   },
@@ -722,8 +753,54 @@ document.addEventListener("input", (e) => {
     showRecipeMatches();
   } else if (e.target.id === "picker-search") {
     pickerList(e.target.value);
+  } else if (e.target.id === "plan-search") {
+    document.getElementById("plan-recipes").innerHTML = planRecipes(e.target.value).s;
   }
 });
+
+/* Drag recipes onto the board, or move a meal already on it. Touch screens use the + Add button. */
+
+let dragging = null;
+
+function clearDragState() {
+  dragging = null;
+  document.querySelector(".planner")?.classList.remove("dragging");
+  document.querySelector(".drop-zone.over")?.classList.remove("over");
+}
+
+const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
+  if (mealId) await api.moveMeal(mealId, day, slot);
+  else await api.addMeal({ day, slot, recipe_id: recipeId });
+  render();
+});
+
+document.addEventListener("dragstart", (e) => {
+  const el = e.target.closest?.("[data-drag-recipe], [data-meal]");
+  if (!el) return;
+  dragging = el.dataset.meal ? { mealId: el.dataset.meal } : { recipeId: el.dataset.dragRecipe };
+  e.dataTransfer.effectAllowed = "copyMove";
+  e.dataTransfer.setData("text/plain", el.textContent.trim());
+  // Showing the drop zones during dragstart itself makes Chrome cancel the drag.
+  setTimeout(() => document.querySelector(".planner")?.classList.add("dragging"));
+});
+document.addEventListener("dragover", (e) => {
+  const zone = e.target.closest?.(".drop-zone");
+  const current = document.querySelector(".drop-zone.over");
+  if (current !== zone) current?.classList.remove("over");
+  if (!zone || !dragging) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = dragging.mealId ? "move" : "copy";
+  zone.classList.add("over");
+});
+document.addEventListener("drop", (e) => {
+  const zone = e.target.closest?.(".drop-zone");
+  if (!zone || !dragging) return;
+  e.preventDefault();
+  const item = dragging;
+  clearDragState();
+  dropMeal(item, zone.dataset);
+});
+document.addEventListener("dragend", clearDragState);
 window.addEventListener("hashchange", () => {
   // A new blank form shouldn't inherit a leftover import.
   if (!location.hash.startsWith("#/recipes/new")) state.draft = null;

@@ -47,6 +47,8 @@ export const listMeals = async (from, to) =>
   unwrap(await sb.from("meal_plan").select("*").gte("day", from).lte("day", to).order("created_at"));
 export const addMeal = async (meal) =>
   unwrap(await sb.from("meal_plan").insert(meal).select().single());
+export const moveMeal = async (id, day, slot) =>
+  unwrap(await sb.from("meal_plan").update({ day, slot }).eq("id", id));
 export const removeMeal = async (id) =>
   unwrap(await sb.from("meal_plan").delete().eq("id", id));
 

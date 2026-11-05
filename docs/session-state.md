@@ -18,14 +18,23 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
 - Supabase is set up, sign-ups are closed, and `import-recipe` is deployed.
 
 ## In progress
-Site restyle, chosen ahead of new features so they don't need restyling later. Nothing
-has changed yet. Three looks are waiting on the owner's choice:
-- A. Warm glass (recommended): frosted panels, peach and gold glow, serif headings.
-- B. Liquid glass: closest to the iPhone look, but busy behind recipe photos.
-- C. Modern cookbook: calmest, big images, depends on recipes having photos.
+Site restyle, chosen ahead of new features so they don't need restyling later. The owner
+picked E. It is live on `main` as a trial, in commit `44459ae`:
+- Kinetic typography, with motion only on the Recipes home screen. Off for reduced motion.
+- Recipe cards look like old lined index cards, split by a curly bracket.
 
-Whichever is chosen includes a Light / Dark / Match device theme, a floating glass tab
-bar on phones, and heavy blur only on the top bar, tab bar and pop-ups.
+Pushed so the owner can try it on real data from a phone and another computer. The local
+test server uses a fake backend, so real accounts can't sign in there. Before the push it
+was tested on that fake backend only. Reduced-motion rules are untested. A Light / Dark /
+Match device switch and a floating phone tab bar were planned but are not built.
+
+**This is a trial and the owner may hate it.** To revert, run `git revert 44459ae` on
+`main` and push. Don't reset, because `main` is the live site. `9c9050d` is the last
+version before the restyle.
+
+If E is dropped, the other looks were: A. Warm glass; B. Liquid glass; C. Modern cookbook;
+D. Technical wireframe and brutalist grid; F. Bento grid. A and F combined was the
+earlier recommendation: a bento home screen of warm glass tiles.
 
 ## Next steps, in order
 1. Friends, with invite links (needs a small server function; sign-ups stay closed).

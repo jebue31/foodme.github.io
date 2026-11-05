@@ -28,7 +28,8 @@ The cleanup passes went live on 2026-11-05. `test/smoke.html` tests every featur
 fake backend. Claude tested the live site on real data on 2026-11-05: all pages at desktop,
 tablet and phone sizes in the app's browser, week switching, search, pause, ticking, and
 web import without saving. No console errors. Saving, deleting and rebuilding the list were
-not run on real data. Not tested yet: the reduced-motion setting and password recovery links.
+not run on real data. The owner also tested the live site on real data and on a real phone
+or ultrawide. Not tested yet: the reduced-motion setting and password recovery links.
 
 The restyle is a trial and the owner may hate it. `aa8e5a3` is the latest restyle round and
 `44459ae` the first, but the cleanup commits sit on top of them and touch the same files,

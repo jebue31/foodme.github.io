@@ -21,16 +21,19 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Cleanup, waiting on the owner's review. Branch `cleanup/five-passes` holds 15 review passes
-and is not on `main`, so the live site doesn't have them yet. It adds `test/smoke.html`,
-which tests every feature on the fake backend. Merging or pushing needs the owner's OK.
+Branch `fix/grocery-amounts` is waiting for the owner's OK to go on `main`. It fixes stray
+brackets in grocery names and decimal amounts, both found on real recipes.
 
-Not tested yet: the live site on real data, a real phone or ultrawide, the reduced-motion
-setting, password recovery links, and the real Supabase backend.
+The cleanup passes went live on 2026-11-05. `test/smoke.html` tests every feature on the
+fake backend. Claude tested the live site on real data on 2026-11-05: all pages at desktop,
+tablet and phone sizes in the app's browser, week switching, search, pause, ticking, and
+web import without saving. No console errors. Saving, deleting and rebuilding the list were
+not run on real data. Not tested yet: the reduced-motion setting and password recovery links.
 
-The restyle is a trial and the owner may hate it. To undo the latest live round, run
-`git revert aa8e5a3` on `main` and push. To undo the whole restyle, also revert `44459ae`.
-Don't reset, because `main` is the live site. `9c9050d` is the last pre-restyle version.
+The restyle is a trial and the owner may hate it. `aa8e5a3` is the latest restyle round and
+`44459ae` the first, but the cleanup commits sit on top of them and touch the same files,
+so reverting them will likely conflict and needs care. Don't reset, because `main` is the
+live site. `9c9050d` is the last pre-restyle version.
 
 ## Feasibility test (owner wants to start here)
 Can a phone read real receipts and shelf labels well enough, on the device? The owner will

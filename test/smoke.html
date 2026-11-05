@@ -1,0 +1,384 @@
+<!doctype html><meta charset="utf-8"><title>FoodMe feature tests</title>
+<style>body { font: 14px system-ui; margin: 8px; } iframe { width: 1300px; height: 800px; border: 1px solid #999; } pre { white-space: pre-wrap; }</style>
+<pre id="out">Running…</pre>
+<iframe id="site" title="App under test"></iframe>
+<script type="module">
+// Drives the real app in a frame against the fake backend. Open through test/server.ps1.
+const frame = document.getElementById("site");
+const results = [];
+const check = (label, ok, detail = "") => results.push({ ok: !!ok, label, detail });
+const win = () => frame.contentWindow;
+const doc = () => frame.contentDocument;
+const $ = (s) => doc().querySelector(s);
+const $$ = (s) => [...doc().querySelectorAll(s)];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function until(fn, label) {
+  for (let i = 0; i < 150; i++) {
+    try { const v = fn(); if (v) return v; } catch { /* page still changing */ }
+    await sleep(20);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+const text = () => doc().body.textContent;
+const headline = () => $(".kinetic-title").textContent.replace("FoodMe", "").trim().replace(/\s+/g, " ");
+const button = (name) => $$("button, a.button").find((b) => b.textContent.trim() === name);
+const clickButton = (name) => button(name).click();
+const go = async (hash, marker) => { win().location.hash = hash; await until(marker, `open ${hash}`); await sleep(40); };
+const setValue = (el, value) => { el.value = value; el.dispatchEvent(new (win().Event)("input", { bubbles: true })); };
+const fill = (form, values) => { for (const [k, v] of Object.entries(values)) form.elements[k].value = v; };
+const submit = (form) => form.requestSubmit();
+const db = () => JSON.parse(win().localStorage.getItem("fake"));
+const toast = () => $("#toast").textContent;
+
+function load() {
+  return new Promise((resolve) => {
+    frame.onload = resolve;
+    frame.src = `/?t=${Math.random()}`;
+  });
+}
+
+function drag(source, target) {
+  const dataTransfer = new (win().DataTransfer)();
+  const fire = (el, type) => el.dispatchEvent(new (win().DragEvent)(type, { bubbles: true, cancelable: true, dataTransfer }));
+  fire(source, "dragstart");
+  return { dataTransfer, drop: () => { fire(target, "dragover"); fire(target, "drop"); fire(source, "dragend"); } };
+}
+
+async function authTests() {
+  await until(() => $(".recipe-card"), "demo user signed in on first visit");
+  check("demo user signs in on first visit", $(".hello").textContent.includes("demo"));
+  check("sample recipes load", $$(".recipe-card").length === 5);
+  await go("#/profile", () => button("Sign out"));
+  clickButton("Sign out");
+  await until(() => $("#auth-form"), "sign-in page");
+  check("sign out shows sign-in page", true);
+  fill($("#auth-form"), { email: "demo@foodme.test", password: "wrong-password" });
+  submit($("#auth-form"));
+  await until(() => !$("#auth-error").hidden, "login error");
+  check("wrong password shows an error", true);
+  $("[data-action=auth-mode][data-mode=reset]").click();
+  check("forgot password screen", text().includes("Reset your password"));
+  fill($("#auth-form"), { email: "demo@foodme.test" });
+  submit($("#auth-form"));
+  await until(() => text().includes("reset link is on its way"), "reset notice");
+  check("reset request confirms", true);
+  fill($("#auth-form"), { email: "demo@foodme.test", password: "demo-password" });
+  submit($("#auth-form"));
+  await until(() => $(".hello"), "signed back in");
+  check("sign back in", true);
+}
+
+async function bannerTests() {
+  await go("#/recipes", () => $(".recipe-card"));
+  check("Recipes headline", headline() === "What's for dinner?", headline());
+  check("Tonight shows planned dinner", $(".tonight").textContent.includes("Tonight: Tomato soup"), $(".tonight").textContent);
+  check("ticker lists recipes", $(".ticker").textContent.includes("Lentil curry"));
+  await go("#/plan", () => $(".days"));
+  check("Plan headline", headline() === "What's the plan?", headline());
+  check("Plan link is lit", $(".tab[aria-current]").textContent.includes("Plan"));
+  await go("#/grocery", () => $("#item-form"));
+  check("Grocery headline", headline() === "What's the damage?", headline());
+  await go("#/profile", () => $("#name-form"));
+  check("Profile headline", headline() === "What's for dinner?", headline());
+  check("No page link is lit on Profile", !$(".tab[aria-current]"));
+  for (const page of ["Recipes", "Plan", "Grocery"]) {
+    $$(".tab").find((t) => t.textContent.includes(page)).click();
+    await until(() => $(".tab[aria-current]")?.textContent.includes(page), `${page} link`);
+    check(`${page} link works`, true);
+  }
+  $(".kinetic-brand").click();
+  await until(() => $(".recipe-card"), "stamp link");
+  check("FoodMe stamp goes home", true);
+  $(".hello").click();
+  await until(() => $("#name-form"), "hello link");
+  check("Hi link opens Profile", true);
+
+  await go("#/recipes", () => $(".recipe-card"));
+  check("ticker is moving", doc().getAnimations().some((a) => a.animationName === "slide" && a.playState === "running"));
+  clickButton("Pause motion");
+  check("pause stops the ticker", doc().getAnimations().every((a) => a.animationName !== "slide" || a.playState === "paused"));
+  check("pause changes the label", !!button("Play motion"));
+  await go("#/plan", () => $(".days"));
+  check("pause lasts across pages", !!button("Play motion"));
+  await load();
+  await until(() => $(".recipe-card"), "reload");
+  check("pause lasts after reload", !!button("Play motion"));
+  clickButton("Play motion");
+  check("play restarts the ticker", doc().getAnimations().some((a) => a.animationName === "slide" && a.playState === "running"));
+}
+
+async function recipeTests() {
+  await go("#/recipes", () => $("#recipe-search"));
+  setValue($("#recipe-search"), "lentil");
+  check("search by title", $$(".recipe-card").length === 1);
+  setValue($("#recipe-search"), "mozzarella");
+  check("search by ingredient", $$(".recipe-card").length === 1);
+  setValue($("#recipe-search"), "zzzz");
+  check("search with no match", text().includes("No recipes match"));
+  setValue($("#recipe-search"), "");
+  check("clearing search restores cards", $$(".recipe-card").length === 5);
+
+  const soup = $$(".recipe-card").find((c) => c.textContent.includes("Tomato soup"));
+  check("long ingredient list shows + more", soup.textContent.includes("+ 4 more"));
+  check("card has a bracket", !!soup.querySelector(".brace"));
+  soup.click();
+  await until(() => $(".recipe-sheet"), "recipe page");
+  check("full recipe shows all ingredients", $$(".recipe-sheet ul li").length === 8);
+  check("full recipe shows numbered method", $$(".recipe-sheet ol li").length === 5);
+  check("recipe page has page links", $$(".tabs .tab").length === 3);
+  check("original link is safe", $(".recipe-sheet a").rel.includes("noopener"));
+
+  await go("#/recipes/new", () => $("#recipe-form"));
+  fill($("#recipe-form"), { title: `<img src=x onerror=alert(1)> Test stew`, servings: "2", minutes: "30", ingredients: "1 cup beans\n2 carrots", steps: "Chop.\nSimmer." });
+  submit($("#recipe-form"));
+  await until(() => $(".recipe-sheet"), "saved recipe");
+  check("new recipe saves", text().includes("Test stew"));
+  check("titles are escaped", !$(".recipe-sheet img") && !$(".ticker img"));
+  clickButton("Edit");
+  await until(() => $("#recipe-form"), "edit form");
+  check("edit form is filled in", $("#recipe-form").elements.ingredients.value.includes("carrots"));
+  fill($("#recipe-form"), { title: "Test stew" });
+  submit($("#recipe-form"));
+  await until(() => $(".recipe-sheet h1")?.textContent === "Test stew", "edited recipe");
+  check("edit saves", true);
+  await go("#/recipes", () => $(".recipe-card"));
+  check("new recipe joins the ticker", $(".ticker").textContent.includes("Test stew"));
+
+  await go("#/recipes", () => $("#import-form"));
+  fill($("#import-form"), { url: "https://example.com/fail" });
+  submit($("#import-form"));
+  await until(() => !$("#import-error").hidden, "import error");
+  check("failed import shows why", text().includes("blocks automatic imports"));
+  $("[data-action=enter-by-hand]").click();
+  await until(() => $("#recipe-form"), "by hand");
+  check("enter by hand keeps the link", $("#recipe-form").elements.source_url.value.includes("example.com/fail"));
+  await go("#/recipes", () => $("#import-form"));
+  fill($("#import-form"), { url: "https://example.com/soup" });
+  submit($("#import-form"));
+  await until(() => $("#recipe-form"), "import form");
+  check("import fills the form", $("#recipe-form").elements.ingredients.value.includes("lentils"));
+  check("imported text stays escaped", !$("#recipe-form b") && text().includes("Check the import"));
+  await go("#/recipes/nope", () => text().includes("Recipe not found"));
+  check("missing recipe message", true);
+
+  await go("#/recipes", () => $(".recipe-card"));
+  win().confirm = () => true;
+  $$(".recipe-card").find((c) => c.textContent.includes("Test stew")).click();
+  await until(() => $(".recipe-sheet"), "stew");
+  clickButton("Delete");
+  await until(() => $(".recipe-grid") && !text().includes("Chop."), "deleted");
+  check("delete removes the recipe", !db().recipes.some((r) => r.title === "Test stew"));
+  check("delete leaves the ticker", !$(".ticker").textContent.includes("Test stew"));
+}
+
+async function planTests() {
+  await go("#/plan", () => $(".days"));
+  const label = () => $(".week-nav strong").textContent;
+  const start = label();
+  $("[aria-label='Next week']").click();
+  await until(() => label() !== start, "next week");
+  check("next week", true);
+  clickButton("This week");
+  await until(() => label() === start, "this week");
+  check("This week button", true);
+  $("[aria-label='Previous week']").click();
+  await until(() => label() !== start, "previous week");
+  check("previous week", true);
+  clickButton("This week");
+  await until(() => label() === start, "back to this week");
+
+  const before = db().meal_plan.length;
+  $(".add").click();
+  check("picker opens", $("#picker").open);
+  setValue($("#picker-search"), "zzzz");
+  check("picker search with no match", text().includes("No recipes match"));
+  setValue($("#picker-search"), "salad");
+  $("[name=picker-slot][value=lunch]").checked = true;
+  $("#picker-list button").click();
+  await until(() => db().meal_plan.length === before + 1 && !$("#picker")?.open && $(".meal small"), "meal added");
+  await sleep(60);
+  check("picker adds to the chosen slot", db().meal_plan.some((m) => m.slot === "lunch"));
+
+  setValue($("#plan-search"), "lentil");
+  check("side list search", $$(".plan-recipe").length === 1);
+  setValue($("#plan-search"), "");
+
+  const count = db().meal_plan.length;
+  const zone = $(".day:nth-child(3) .drop-zone[data-slot=breakfast]");
+  drag($(".plan-recipe"), zone).drop();
+  await until(() => db().meal_plan.length === count + 1, "recipe dropped");
+  await sleep(60);
+  check("drag a recipe onto a day", true);
+
+  const meal = $(".meal[data-meal]");
+  const id = meal.dataset.meal;
+  const target = $(".day:nth-child(5) .drop-zone[data-slot=lunch]");
+  drag(meal, target).drop();
+  await until(() => db().meal_plan.find((m) => m.id === id).day === target.dataset.day, "meal moved");
+  await sleep(60);
+  check("drag a meal to another day", true);
+
+  await until(() => $(`[data-action=remove-meal][data-id="${id}"]`), "meal on the board");
+  $(`[data-action=remove-meal][data-id="${id}"]`).click();
+  await until(() => !db().meal_plan.some((m) => m.id === id), "meal removed");
+  check("remove a meal", true);
+  await sleep(60);
+
+  const today = $(".day.today");
+  check("today is marked", !!today);
+  const dinner = () => db().meal_plan.filter((m) => m.day === today.querySelector("[data-day]").dataset.day && m.slot === "dinner");
+  if (!dinner().length) throw new Error("Expected a planned dinner today");
+  for (const m of dinner()) {
+    await until(() => $(`[data-action=remove-meal][data-id="${m.id}"]`), "tonight's dinner");
+    $(`[data-action=remove-meal][data-id="${m.id}"]`).click();
+    await until(() => !db().meal_plan.some((x) => x.id === m.id), "dinner removed");
+    await sleep(60);
+  }
+  await go("#/recipes", () => $(".tonight"));
+  await until(() => $(".tonight").textContent.startsWith("Tonight, maybe:"), "tonight updates");
+  check("Tonight follows the plan", true);
+}
+
+async function groceryTests() {
+  await go("#/plan", () => $(".days"));
+  $(".add").click();
+  $("#picker-list button:last-child").click();
+  await until(() => $(".meal"), "a meal");
+  await sleep(60);
+  clickButton("Make grocery list");
+  await until(() => $(".grocery li"), "grocery list");
+  check("Make grocery list builds it", /List built/.test(toast()), toast());
+  check("button says Rebuild", !!button("Rebuild from this week"));
+  const built = $$(".grocery li").length;
+
+  fill($("#item-form"), { name: "Paper towels" });
+  submit($("#item-form"));
+  await until(() => text().includes("Paper towels"), "added item");
+  check("add an item by hand", $$(".grocery li").length === built + 1);
+
+  const box = $(".grocery input[type=checkbox]");
+  box.click();
+  await until(() => $(".done"), "ticked");
+  check("tick moves to the trolley", text().includes("In the trolley"));
+  check("Clear button appears", !!$("[data-action=clear-checked]"));
+  $(".done input[type=checkbox]").click();
+  await until(() => !$(".done"), "unticked");
+  check("untick moves it back", true);
+
+  clickButton("Rebuild from this week");
+  await until(() => /List built/.test(toast()), "rebuild");
+  await sleep(100);
+  check("rebuild keeps hand-added items", text().includes("Paper towels"));
+
+  await until(() => $("[data-action=remove-item]"), "item rows");
+  const rows = $$(".grocery li").length;
+  $("[data-action=remove-item]").click();
+  await until(() => $$(".grocery li").length === rows - 1, "item removed");
+  check("remove an item", true);
+
+  $(".grocery input[type=checkbox]").click();
+  await until(() => $("[data-action=clear-checked]"), "something ticked");
+  await sleep(40);
+  $("[data-action=clear-checked]").click();
+  await until(() => !$("[data-action=clear-checked]"), "cleared");
+  check("clear checked items", !$(".done"));
+}
+
+async function profileTests() {
+  await go("#/profile", () => $("#name-form"));
+  fill($("#name-form"), { display_name: "Tester" });
+  submit($("#name-form"));
+  await until(() => $(".hello").textContent.includes("Tester"), "name saved");
+  check("save name updates greeting", true);
+
+  fill($("#email-form"), { email: "other@foodme.test" });
+  submit($("#email-form"));
+  await until(() => /Check your email/.test(toast()), "email toast");
+  check("change email", true);
+
+  const pw = $("#password-form");
+  fill(pw, { current: "demo-password", next: "new-password1", again: "different-one" });
+  submit(pw);
+  await until(() => /don't match/.test(toast()), "mismatch");
+  check("password mismatch is caught", true);
+  fill(pw, { next: "new-password1", again: "new-password1" });
+  submit(pw);
+  await until(() => /Password changed/.test(toast()), "password changed");
+  check("change password", true);
+
+  let exported = null;
+  const url = win().URL;
+  url.createObjectURL = (blob) => { exported = blob; return "blob:test"; };
+  url.revokeObjectURL = () => {};
+  win().HTMLAnchorElement.prototype.click = function () {};
+  clickButton("Download my recipes");
+  await until(() => exported, "export");
+  check("download recipes", exported.size > 100);
+
+  const del = $("#delete-form");
+  fill(del, { password: "new-password1", confirm: "nope" });
+  submit(del);
+  await until(() => /Type DELETE/.test(toast()), "delete guard");
+  check("delete needs the word DELETE", true);
+  fill(del, { confirm: "DELETE" });
+  submit(del);
+  await until(() => $("#auth-form"), "account deleted");
+  check("delete account signs out", !Object.keys(db().users).length);
+}
+
+async function emptyAccountTests() {
+  $("[data-action=auth-mode][data-mode=up]").click();
+  fill($("#auth-form"), { email: "new@foodme.test", password: "new-password1" });
+  submit($("#auth-form"));
+  await until(() => text().includes("Your cookbook is empty"), "empty cookbook");
+  check("new account sees an empty cookbook", true);
+  check("no Tonight line without recipes", !$(".tonight") && !$(".ticker"));
+  check("banner still shows", headline() === "What's for dinner?");
+  await go("#/plan", () => $(".days"));
+  check("Plan works with no recipes", text().includes("Add your first recipe"));
+  check("headline does not rise again", !$(".kinetic.enter"));
+  await go("#/grocery", () => $("#item-form"));
+  check("Grocery works when empty", text().includes("Nothing to buy yet"));
+}
+
+async function layoutTests() {
+  const widths = [375, 768, 1300];
+  for (const width of widths) {
+    frame.style.width = `${width}px`;
+    await sleep(60);
+    for (const [hash, marker] of [["#/recipes", "#import-form"], ["#/plan", ".days"], ["#/grocery", "#item-form"], ["#/profile", "#name-form"]]) {
+      await go(hash, () => $(marker));
+      const root = doc().documentElement;
+      check(`no sideways scroll at ${width}px on ${hash}`, root.scrollWidth <= root.clientWidth, `${root.scrollWidth} > ${root.clientWidth}`);
+    }
+  }
+  const main = {};
+  for (const hash of ["#/recipes", "#/plan", "#/grocery", "#/profile"]) {
+    await go(hash, () => $("main .tabs"));
+    main[hash] = $("main").getBoundingClientRect().width;
+  }
+  check("every page is the same width", new Set(Object.values(main)).size === 1, JSON.stringify(main));
+  frame.style.width = "";
+}
+
+const suites = { authTests, bannerTests, recipeTests, planTests, groceryTests, profileTests, emptyAccountTests, layoutTests };
+
+const started = performance.now();
+localStorage.clear();
+await load();
+for (const [name, suite] of Object.entries(suites)) {
+  try {
+    win().onerror = (message) => check(`no script errors in ${name}`, false, message);
+    await suite();
+  } catch (err) {
+    check(name, false, err.message);
+  }
+}
+
+const failed = results.filter((r) => !r.ok);
+document.title = failed.length ? `FAIL ${failed.length}` : "PASS";
+document.getElementById("out").textContent = `${results.length - failed.length}/${results.length} passed in ${Math.round(performance.now() - started)}ms\n\n`
+  + failed.map((f) => `FAIL ${f.label}  ${f.detail}`).join("\n");
+frame.remove();
+</script>

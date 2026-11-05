@@ -44,6 +44,17 @@ const TRAILING = /\b(to taste|to serve|as needed|optional|for (garnish|serving|g
 const NUM = String.raw`\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?`;
 const QTY = new RegExp(String.raw`^(?:about\s+|approx\.?\s+)?(${NUM})(?:\s*(?:-|–|—|to)\s*(${NUM}))?\s*`, "i");
 
+// Recipe sites nest brackets: "warm water ((about 95°F) (see notes))". A bracket that
+// never closes runs to the end of the line.
+function dropBrackets(s) {
+  let before;
+  do {
+    before = s;
+    s = s.replace(/\([^()]*\)/g, " ");
+  } while (s !== before);
+  return s.replace(/\(.*$/, " ").replace(/\)/g, " ");
+}
+
 function toNumber(s) {
   return s.trim().split(/\s+/).reduce((sum, part) => {
     const [a, b] = part.split("/");
@@ -67,9 +78,8 @@ export function ingredientKey(name) {
 
 // "1 1/2 cups flour, sifted" -> { qty: 1.5, unit: "cup", name: "flour" }
 export function parseIngredient(line) {
-  let s = line.replace(/[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, (c) => ` ${FRACTIONS[c]} `)
-    .replace(/^[\s\-–—*•·]+/, "")
-    .replace(/\([^)]*\)/g, " ")
+  let s = dropBrackets(line.replace(/[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, (c) => ` ${FRACTIONS[c]} `)
+    .replace(/^[\s\-–—*•·]+/, ""))
     .replace(/\s+/g, " ")
     .trim();
   if (!s || s.endsWith(":")) return null;
@@ -116,15 +126,23 @@ export function formatQty(n) {
   return String(Math.round(n * 100) / 100);
 }
 
+const reads = (n) => !formatQty(n).includes(".");
+const tidy = (n) => (reads(n) ? n : Math.ceil(n * 8) / 8);
+
 function formatVolume(tsp, metric) {
   if (metric) {
     const ml = tsp / VOLUME.ml;
     return ml >= 1000 ? `${formatQty(ml / 1000)} l` : `${Math.round(ml)} ml`;
   }
-  if (tsp < 3) return `${formatQty(tsp)} tsp`;
-  if (tsp < 12) return `${formatQty(tsp / 3)} tbsp`;
+  // Use the biggest kitchen measure that reads cleanly, so "0.84 cup" becomes
+  // "13 1/2 tbsp". From a cup up, or down at teaspoons, round up to the next eighth.
   const cups = tsp / 48;
-  return `${formatQty(cups)} ${cups > 1 ? "cups" : "cup"}`;
+  if (cups >= 1 || (tsp >= 12 && reads(cups))) {
+    const q = tidy(cups);
+    return `${formatQty(q)} ${q > 1 ? "cups" : "cup"}`;
+  }
+  if (tsp >= 3 && reads(tsp / 3)) return `${formatQty(tsp / 3)} tbsp`;
+  return `${formatQty(tidy(tsp))} tsp`;
 }
 
 function formatWeight(oz, metric) {

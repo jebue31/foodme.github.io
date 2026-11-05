@@ -21,9 +21,9 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Branch `fix/move-delete` moves Delete to the bottom of the edit screen and is waiting for
-the owner's review. The fixes for stray brackets in grocery names and decimal amounts went
-live on 2026-11-05. The owner should click Rebuild from this week to refresh the saved list.
+Nothing. Delete moved to the bottom of the edit screen, and the fixes for stray brackets in
+grocery names and decimal amounts, went live on 2026-11-05. The owner should click Rebuild
+from this week to refresh the saved list.
 
 The cleanup passes went live on 2026-11-05. `test/smoke.html` tests every feature on the
 fake backend. Claude tested the live site on real data on 2026-11-05: all pages at desktop,

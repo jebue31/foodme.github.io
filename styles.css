@@ -124,7 +124,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 }
 .kinetic-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: .4rem 0 .5rem; }
 .tonight { margin: 0; min-width: 0; font-size: clamp(1.05rem, 3vw, 1.3rem); font-weight: 600; letter-spacing: -.02em; }
-.tonight span { display: inline-block; color: var(--accent); font-weight: 800; }
+.tonight span { display: inline-block; max-width: 100%; overflow-wrap: anywhere; color: var(--accent); font-weight: 800; }
 .motion-toggle { flex: none; font-size: .82rem; }
 .ticker { overflow: hidden; white-space: nowrap; border-block: 2px solid var(--ink); padding: .3rem 0; font-size: 1.2rem; font-weight: 700; }
 .ticker div { display: inline-block; animation: slide linear infinite; }

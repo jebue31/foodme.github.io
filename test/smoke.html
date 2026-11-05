@@ -277,6 +277,17 @@ async function groceryTests() {
   await sleep(100);
   check("rebuild keeps hand-added items", text().includes("Paper towels"));
 
+  const week = () => $(".week-nav strong").textContent;
+  const thisWeek = week();
+  $("[aria-label='Next week']").click();
+  await until(() => week() !== thisWeek, "grocery next week");
+  check("Grocery week switcher", true);
+  $("[data-action=build-list]").click();
+  await until(() => /no meals planned/.test(toast()), "empty week");
+  check("empty week says so and keeps the list", text().includes("Paper towels"));
+  $("[aria-label='Previous week']").click();
+  await until(() => week() === thisWeek, "grocery back");
+
   await until(() => $("[data-action=remove-item]"), "item rows");
   const rows = $$(".grocery li").length;
   $("[data-action=remove-item]").click();
@@ -351,17 +362,45 @@ async function emptyAccountTests() {
   check("Grocery works when empty", text().includes("Nothing to buy yet"));
 }
 
+async function photoTests() {
+  const data = db();
+  data.recipes[0].image_url = "http://localhost:8123/missing-photo.jpg";
+  data.recipes[1].image_url = "javascript:alert(1)";
+  win().localStorage.setItem("fake", JSON.stringify(data));
+  await load();
+  await until(() => $(".recipe-card"), "photo reload");
+  check("a card shows the recipe photo", $$(".recipe-card img").length === 1);
+  $(".recipe-card img").closest("a").click();
+  await until(() => $(".recipe-sheet"), "photo recipe");
+  check("the recipe page shows the photo", !!$("img.hero"));
+  const clean = db();
+  clean.recipes[0].image_url = null;
+  clean.recipes[1].image_url = null;
+  win().localStorage.setItem("fake", JSON.stringify(clean));
+}
+
 async function layoutTests() {
+  const longTitle = "Superlongrecipenamewithnospacesatall".repeat(3);
+  await go("#/recipes/new", () => $("#recipe-form"));
+  fill($("#recipe-form"), { title: longTitle, ingredients: "1 cup supercalifragilisticexpialidocioussupercalifragilisticexpialidocious", steps: "Mix.".repeat(60) });
+  submit($("#recipe-form"));
+  await until(() => $(".recipe-sheet"), "long recipe");
+  const longId = win().location.hash.split("/")[2];
   const widths = [375, 768, 1300];
   for (const width of widths) {
     frame.style.width = `${width}px`;
     await sleep(60);
-    for (const [hash, marker] of [["#/recipes", "#import-form"], ["#/plan", ".days"], ["#/grocery", "#item-form"], ["#/profile", "#name-form"]]) {
+    for (const [hash, marker] of [["#/recipes", ".recipe-card"], [`#/recipes/${longId}`, ".recipe-sheet"], ["#/plan", ".days"], ["#/grocery", "#item-form"], ["#/profile", "#name-form"]]) {
       await go(hash, () => $(marker));
+      if ($("#tonight")) $("#tonight").textContent = longTitle;
       const root = doc().documentElement;
-      check(`no sideways scroll at ${width}px on ${hash}`, root.scrollWidth <= root.clientWidth, `${root.scrollWidth} > ${root.clientWidth}`);
+      check(`no sideways scroll at ${width}px on ${hash.slice(0, 12)}`, root.scrollWidth <= root.clientWidth, `${root.scrollWidth} > ${root.clientWidth}`);
     }
   }
+  await go(`#/recipes/${longId}`, () => $(".recipe-sheet"));
+  win().confirm = () => true;
+  clickButton("Delete");
+  await until(() => !db().recipes.some((r) => r.id === longId) && $(".recipe-card"), "long recipe deleted");
   const main = {};
   for (const hash of ["#/recipes", "#/plan", "#/grocery", "#/profile"]) {
     await go(hash, () => $("main .tabs"));
@@ -371,7 +410,7 @@ async function layoutTests() {
   frame.style.width = "";
 }
 
-const suites = { authTests, bannerTests, recipeTests, planTests, groceryTests, profileTests, emptyAccountTests, layoutTests };
+const suites = { authTests, bannerTests, recipeTests, planTests, groceryTests, photoTests, layoutTests, profileTests, emptyAccountTests };
 
 const started = performance.now();
 localStorage.clear();

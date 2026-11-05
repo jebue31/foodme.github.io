@@ -232,13 +232,13 @@ const HEADLINES = {
   grocery: ["What's", "the", "damage?"],
 };
 const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-let tonightTimer;
-const randomStart = Math.floor(Math.random() * 1000); // so big cookbooks don't always show the A's
 const TICKER_LENGTH = 24; // enough to fill a wide screen, without a huge strip for big cookbooks
-let tonightIndex = randomStart;
+const randomStart = Math.floor(Math.random() * 1000); // so big cookbooks don't always show the A's
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let bannerEntered = false; // the headline rises once, not on every page change
 let shownHeadline = null;
+let tonightTimer;
+let tonightIndex = randomStart;
 let tonightFor = null; // the day state.tonight was worked out for
 const refreshTonight = () => { tonightFor = null; };
 let motionPaused = false;

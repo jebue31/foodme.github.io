@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/docs/session-state.md\"; if [ -f \"$f\" ]; then echo \"Context was just compacted. This is the current project state from docs/session-state.md. Trust it over the compaction summary:\"; echo; cat \"$f\"; else echo \"Context was just compacted, but docs/session-state.md is missing. Tell the user.\"; fi",
+            "shell": "bash",
+            "timeout": 10,
+            "statusMessage": "Reloading project state"
+          }
+        ]
+      }
+    ]
+  }
+}

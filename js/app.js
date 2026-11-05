@@ -316,10 +316,8 @@ function startBanner(headline) {
     track.style.animationDelay = `${-(performance.now() / 1000 % seconds)}s`;
   }
   const el = document.getElementById("tonight");
-  const firstShow = !bannerEntered;
+  if (el && !bannerEntered) swing(el);
   bannerEntered = true;
-  if (!el) return;
-  if (firstShow) swing(el);
   const { names } = state.tonight;
   if (names.length < 2) return;
   tonightTimer = setInterval(() => {

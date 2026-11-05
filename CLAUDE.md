@@ -27,6 +27,6 @@ automatically after compaction, so anything that must survive belongs there.
 - Build and test one feature at a time locally. The owner reviews it first.
 - Ask before big changes or anything that could break things, such as merging a branch
   into `main` or pushing to `main`, which changes the live site.
-- Test locally with `test/server.ps1` (fake backend, port 8123) and `test/tests.html`.
+- Test locally with `test/server.ps1` (fake backend, port 8123), `test/tests.html` and `test/smoke.html`.
 - Give database changes as a re-runnable `supabase/schema.sql` before relying on them.
 - No build step, and nothing that needs paid services without asking first.

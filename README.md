@@ -50,4 +50,4 @@ Run a local copy with a fake in-browser backend, so no Supabase project is neede
 powershell -ExecutionPolicy Bypass -File test/server.ps1
 ```
 
-Then open `http://localhost:8123/` for the app, or `http://localhost:8123/test/tests.html` for the parser tests.
+Then open `http://localhost:8123/` for the app, which signs you in as a made-up demo user with sample recipes. For tests, open `http://localhost:8123/test/tests.html` (parser) or `http://localhost:8123/test/smoke.html` (every feature; it resets the demo data).

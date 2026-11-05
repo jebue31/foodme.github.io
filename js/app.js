@@ -198,7 +198,7 @@ async function submitAuth(form) {
 
 /* ---------- recipes ---------- */
 
-const BRACE = h`<span class="brace" aria-hidden="true"><i></i><i></i></span>`;
+const BRACE = h`<span class="brace" aria-hidden="true"><span></span><span></span></span>`;
 const CARD_INGREDIENTS = 5;
 
 function recipeCards(recipes) {
@@ -234,7 +234,7 @@ const HEADLINES = {
 const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let tonightTimer;
-let tonightIndex = Math.floor(Math.random() * 1000);
+let tonightIndex = Math.floor(Math.random() * 1000); // start on a random recipe
 let bannerEntered = false; // the headline rises once, not on every page change
 let shownHeadline = null;
 let tonightFor = null; // the day state.tonight was worked out for
@@ -285,7 +285,7 @@ function swing(el, duration = 500) {
 function tickerItems() {
   const titles = state.recipes.map((r) => r.title);
   const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
-  return [...run, ...run].map((t) => h`${t}<b>/</b>`);
+  return [...run, ...run].map((t) => h`${t}<span>/</span>`);
 }
 
 function kineticBanner(headline) {

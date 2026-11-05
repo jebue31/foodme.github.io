@@ -128,7 +128,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .motion-toggle { flex: none; font-size: .82rem; }
 .ticker { overflow: hidden; white-space: nowrap; border-block: 2px solid var(--ink); padding: .3rem 0; font-size: 1.2rem; font-weight: 700; }
 .ticker div { display: inline-block; animation: slide linear infinite; }
-.ticker b { color: var(--accent); margin: 0 .7rem; }
+.ticker span { color: var(--accent); margin: 0 .7rem; }
 .kinetic.still .ticker div { animation-play-state: paused; }
 @keyframes rise { from { transform: translateY(60%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slide { to { transform: translateX(-50%); } }
@@ -190,14 +190,14 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 /* the curly bracket, pointing at the method. Drawn from four pieces so the
    curves keep their shape however tall the ingredient list gets. */
 .brace { --r: .7rem; --w: 2px; display: grid; grid-template-rows: 1fr 1fr; color: var(--red); margin-block: .2rem .35rem; }
-.brace i { position: relative; }
-.brace i::before, .brace i::after { content: ""; position: absolute; border: 0 solid currentColor; }
-.brace i::before { left: 0; width: 50%; }
-.brace i::after { left: calc(50% - var(--w)); right: 0; height: var(--r); }
-.brace i:first-child::before { top: 0; bottom: var(--r); border-top-width: var(--w); border-right-width: var(--w); border-top-right-radius: var(--r); }
-.brace i:first-child::after { bottom: 0; border-bottom-width: var(--w); border-left-width: var(--w); border-bottom-left-radius: var(--r); }
-.brace i:last-child::before { top: var(--r); bottom: 0; border-bottom-width: var(--w); border-right-width: var(--w); border-bottom-right-radius: var(--r); }
-.brace i:last-child::after { top: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: var(--r); }
+.brace span { position: relative; }
+.brace span::before, .brace span::after { content: ""; position: absolute; border: 0 solid currentColor; }
+.brace span::before { left: 0; width: 50%; }
+.brace span::after { left: calc(50% - var(--w)); right: 0; height: var(--r); }
+.brace span:first-child::before { top: 0; bottom: var(--r); border-top-width: var(--w); border-right-width: var(--w); border-top-right-radius: var(--r); }
+.brace span:first-child::after { bottom: 0; border-bottom-width: var(--w); border-left-width: var(--w); border-bottom-left-radius: var(--r); }
+.brace span:last-child::before { top: var(--r); bottom: 0; border-bottom-width: var(--w); border-right-width: var(--w); border-bottom-right-radius: var(--r); }
+.brace span:last-child::after { top: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: var(--r); }
 
 /* plan */
 .week-nav { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
@@ -309,13 +309,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .recipe-sheet { --pad: 1rem; }
   .recipe-sheet .ic-body { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .recipe-sheet .brace { grid-template-rows: none; grid-template-columns: 1fr 1fr; height: var(--rule); margin-block: 0; }
-  .recipe-sheet .brace i::before, .recipe-sheet .brace i::after { left: auto; right: auto; width: auto; height: auto; border-width: 0; border-radius: 0; }
-  .recipe-sheet .brace i::before { top: 0; bottom: calc(50% - var(--w)); }
-  .recipe-sheet .brace i::after { top: 50%; bottom: 0; width: var(--r); }
-  .recipe-sheet .brace i:first-child::before { left: 0; right: var(--r); border-left-width: var(--w); border-bottom-width: var(--w); border-bottom-left-radius: var(--r); }
-  .recipe-sheet .brace i:first-child::after { right: 0; border-top-width: var(--w); border-right-width: var(--w); border-top-right-radius: var(--r); }
-  .recipe-sheet .brace i:last-child::before { left: var(--r); right: 0; border-right-width: var(--w); border-bottom-width: var(--w); border-bottom-right-radius: var(--r); }
-  .recipe-sheet .brace i:last-child::after { left: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: var(--r); }
+  .recipe-sheet .brace span::before, .recipe-sheet .brace span::after { left: auto; right: auto; width: auto; height: auto; border-width: 0; border-radius: 0; }
+  .recipe-sheet .brace span::before { top: 0; bottom: calc(50% - var(--w)); }
+  .recipe-sheet .brace span::after { top: 50%; bottom: 0; width: var(--r); }
+  .recipe-sheet .brace span:first-child::before { left: 0; right: var(--r); border-left-width: var(--w); border-bottom-width: var(--w); border-bottom-left-radius: var(--r); }
+  .recipe-sheet .brace span:first-child::after { right: 0; border-top-width: var(--w); border-right-width: var(--w); border-top-right-radius: var(--r); }
+  .recipe-sheet .brace span:last-child::before { left: var(--r); right: 0; border-right-width: var(--w); border-bottom-width: var(--w); border-bottom-right-radius: var(--r); }
+  .recipe-sheet .brace span:last-child::after { left: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: var(--r); }
 }
 
 @media (prefers-reduced-motion: reduce) {

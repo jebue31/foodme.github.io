@@ -43,6 +43,11 @@ const dayKey = (d) =>
 const shortDate = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const weekLabel = (start) => `${shortDate(start)} – ${shortDate(addDays(start, 6))}`;
 
+const weekSwitcher = () => h`
+  <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
+  <strong>${weekLabel(state.week)}</strong>
+  <button data-action="week" data-step="7" aria-label="Next week">›</button>`;
+
 /* ---------- small helpers ---------- */
 
 function toast(message) {
@@ -102,31 +107,28 @@ async function ensureProfile() {
 
 /* ---------- shell ---------- */
 
-function shell(active, content) {
-  const tab = (href, id, code, label) =>
-    h`<a href="${href}" class="tab" ${id === active ? h`aria-current="page"` : ""}><i aria-hidden="true">${code}</i>${label}</a>`;
+const PAGE_LINKS = [["recipes", "A1", "Recipes"], ["plan", "B2", "Plan"], ["grocery", "C3", "Grocery"]];
+
+function shell(active, content, { title, tools = "" } = {}) {
+  const headline = HEADLINES[active] ?? DEFAULT_HEADLINE;
+  const current = (id) => (id === active ? h`aria-current="page"` : "");
   root.innerHTML = h`
     <header class="topbar">
-      <a class="hello" href="#/profile" ${active === "profile" ? h`aria-current="page"` : ""}>Hi, ${displayName()}</a>
+      <a class="hello" href="#/profile" ${current("profile")}>Hi, ${displayName()}</a>
     </header>
     <main class="page">
-      ${kineticBanner(active)}
-      <div class="page-head" id="nav-row">
+      ${kineticBanner(headline)}
+      <div class="page-head">
+        ${title ? h`<h1>${title}</h1>` : ""}
         <nav class="tabs" aria-label="Main">
-          ${tab("#/recipes", "recipes", "A1", "Recipes")}
-          ${tab("#/plan", "plan", "B2", "Plan")}
-          ${tab("#/grocery", "grocery", "C3", "Grocery")}
+          ${PAGE_LINKS.map(([id, code, label]) => h`
+            <a href="#/${id}" class="tab" ${current(id)}><span aria-hidden="true">${code}</span>${label}</a>`)}
         </nav>
+        ${tools}
       </div>
       ${content}
     </main>`.s;
-  // The page links sit beside the page's own heading when it has one.
-  const heading = root.querySelector(".page-head:not(#nav-row) h1");
-  if (heading) {
-    heading.after(root.querySelector(".tabs"));
-    document.getElementById("nav-row").remove();
-  }
-  startBanner();
+  startBanner(headline);
 }
 
 /* ---------- auth screens ---------- */
@@ -225,18 +227,24 @@ function recipeCards(recipes) {
 
 /* ---------- the "What's for dinner?" banner, on every signed-in page ---------- */
 
+const HEADLINES = {
+  plan: ["What's", "the", "plan?"],
+  grocery: ["What's", "the", "damage?"],
+};
+const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let tonightTimer;
 let tonightIndex = Math.floor(Math.random() * 1000);
 let bannerEntered = false; // the headline rises once, not on every page change
-
-function motionPaused() {
-  try {
-    return localStorage.getItem("foodme-motion") === "off";
-  } catch {
-    return false;
-  }
+let shownHeadline = null;
+let motionPaused = false;
+try {
+  motionPaused = localStorage.getItem("foodme-motion") === "off";
+} catch {
+  // no storage: motion stays on
 }
+const motionOff = () => motionPaused || reducedMotion.matches;
+const motionLabel = () => (motionPaused ? "Play motion" : "Pause motion");
 
 // The planned dinner when there is one, otherwise a rotating suggestion from the cookbook.
 async function tonightChoices() {
@@ -260,46 +268,35 @@ async function ensureBanner() {
   state.tonight = await tonightChoices();
 }
 
-function swingTonight(el, duration = 500) {
-  if (reducedMotion.matches) return;
+function swing(el, duration = 500) {
+  if (motionOff()) return;
   el.animate(
     [{ transform: "translateY(40%) rotate(-3deg)", opacity: 0 }, { transform: "none", opacity: 1 }],
     { duration, easing: "ease" },
   );
 }
 
-const HEADLINES = {
-  plan: ["What's", "the", "plan?"],
-  grocery: ["What's", "the", "damage?"],
-};
-const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
-let headline = DEFAULT_HEADLINE;
-let shownHeadline = null;
-
-function kineticBanner(active) {
-  headline = HEADLINES[active] ?? DEFAULT_HEADLINE;
+function kineticBanner(headline) {
   const { label, names } = state.tonight ?? { label: "", names: [] };
   // Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
   const titles = (state.recipes ?? []).map((r) => r.title);
   const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
   return h`
-    <section class="kinetic ${bannerEntered ? "" : "enter"} ${motionPaused() ? "still" : ""}" id="kinetic">
+    <div class="kinetic ${bannerEntered || motionOff() ? "" : "enter"} ${motionPaused ? "still" : ""}">
       <p class="kinetic-title">${headline.map((word) => h`<span>${word}</span> `)}<a class="kinetic-brand" href="#/recipes">FoodMe</a></p>
       ${names.length ? h`
         <div class="kinetic-row">
           <p class="tonight">${label} <span id="tonight">${names[tonightIndex % names.length]}</span></p>
-          <button class="link motion-toggle" data-action="toggle-motion">${motionPaused() ? "Play motion" : "Pause motion"}</button>
+          <button class="link motion-toggle" data-action="toggle-motion">${motionLabel()}</button>
         </div>
         <div class="ticker" aria-hidden="true"><div>${[...run, ...run].map((t) => h`${t}<b>/</b>`)}</div></div>` : ""}
-    </section>`;
+    </div>`;
 }
 
-function startBanner() {
+function startBanner(headline) {
   clearInterval(tonightTimer);
   // Moving between pages: only the last word swings into place.
-  if (shownHeadline && shownHeadline !== headline && !motionPaused()) {
-    swingTonight(document.querySelector(".kinetic-title span:nth-child(3)"), 900);
-  }
+  if (shownHeadline && shownHeadline !== headline) swing(document.querySelector(".kinetic-title span:nth-child(3)"), 900);
   shownHeadline = headline;
   const track = document.querySelector(".ticker div");
   if (track) {
@@ -313,25 +310,21 @@ function startBanner() {
   const firstShow = !bannerEntered;
   bannerEntered = true;
   if (!el) return;
-  if (firstShow) swingTonight(el);
+  if (firstShow) swing(el);
   const { names } = state.tonight;
   if (names.length < 2) return;
   tonightTimer = setInterval(() => {
     if (!el.isConnected) return clearInterval(tonightTimer);
-    if (reducedMotion.matches || motionPaused()) return;
+    if (motionOff()) return;
     tonightIndex += 1;
     el.textContent = names[tonightIndex % names.length];
-    swingTonight(el);
+    swing(el);
   }, 3500);
 }
 
 async function recipesView() {
   const recipes = await ensureRecipes();
   shell("recipes", h`
-    <div class="page-head">
-      <h1>Recipes</h1>
-      <a class="button primary" href="#/recipes/new">New recipe</a>
-    </div>
     <form class="import card" id="import-form">
       <label for="import-url">Add from the web</label>
       <div class="inline">
@@ -347,7 +340,7 @@ async function recipesView() {
       <div class="empty">
         <h2>Your cookbook is empty</h2>
         <p>Paste a recipe link above, or type in a family favourite.</p>
-      </div>`}`);
+      </div>`}`, { title: "Recipes", tools: h`<a class="button primary" href="#/recipes/new">New recipe</a>` });
   if (recipes.length) showRecipeMatches();
 }
 
@@ -506,16 +499,6 @@ async function planView() {
   const today = dayKey(new Date());
   const days = Array.from({ length: 7 }, (_, i) => addDays(state.week, i));
   shell("plan", h`
-    <div class="page-head">
-      <h1>Meal plan</h1>
-      <div class="week-nav">
-        <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
-        <strong>${weekLabel(state.week)}</strong>
-        <button data-action="week" data-step="7" aria-label="Next week">›</button>
-        <button data-action="week" data-step="0">This week</button>
-        <button class="primary" data-action="build-list">Make grocery list</button>
-      </div>
-    </div>
     <div class="planner">
       <aside class="plan-recipes card" aria-label="Your recipes">
         <h2>Recipes</h2>
@@ -554,7 +537,12 @@ async function planView() {
       </div>
       <input id="picker-search" type="search" placeholder="Search recipes" aria-label="Search recipes">
       <div id="picker-list" class="picker-list"></div>
-    </dialog>`);
+    </dialog>`, { title: "Meal plan", tools: h`
+    <div class="week-nav">
+      ${weekSwitcher()}
+      <button data-action="week" data-step="0">This week</button>
+      <button class="primary" data-action="build-list">Make grocery list</button>
+    </div>` });
 }
 
 function pickerList(q = "") {
@@ -622,16 +610,6 @@ async function groceryView() {
   const todo = items.filter((i) => !i.checked);
   const done = items.filter((i) => i.checked);
   shell("grocery", h`
-    <div class="page-head">
-      <h1>Grocery list</h1>
-      <div class="week-nav">
-        ${done.length ? h`<button data-action="clear-checked">Clear ${done.length} checked</button>` : ""}
-        <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
-        <strong>${weekLabel(state.week)}</strong>
-        <button data-action="week" data-step="7" aria-label="Next week">›</button>
-        <button class="primary" data-action="build-list">${items.some((i) => i.from_plan) ? "Rebuild" : "Build"} from this week</button>
-      </div>
-    </div>
     <form class="inline add-item" id="item-form">
       <input name="name" required maxlength="200" placeholder="Add something else, like paper towels" aria-label="Add an item">
       <button type="submit">Add</button>
@@ -642,7 +620,12 @@ async function groceryView() {
       <div class="empty">
         <h2>Nothing to buy yet</h2>
         <p>Plan some meals, then build your list from the week.</p>
-      </div>`}`);
+      </div>`}`, { title: "Grocery list", tools: h`
+    <div class="week-nav">
+      ${done.length ? h`<button data-action="clear-checked">Clear ${done.length} checked</button>` : ""}
+      ${weekSwitcher()}
+      <button class="primary" data-action="build-list">${items.some((i) => i.from_plan) ? "Rebuild" : "Build"} from this week</button>
+    </div>` });
 }
 
 /* ---------- profile ---------- */
@@ -650,7 +633,6 @@ async function groceryView() {
 function profileView() {
   const { email, new_email: pendingEmail } = state.session.user;
   shell("profile", h`
-    <div class="page-head"><h1>Your profile</h1></div>
     <div class="profile">
       <form class="card" id="name-form">
         <h2>Your name</h2>
@@ -709,7 +691,7 @@ function profileView() {
         </label>
         <button class="danger" type="submit">Delete my account</button>
       </form>
-    </div>`);
+    </div>`, { title: "Your profile" });
 }
 
 async function submitName(form) {
@@ -795,14 +777,14 @@ const actions = {
   "sign-out-all": () => api.signOut("global"),
   "export-recipes": () => exportRecipes(),
   "toggle-motion": (el) => {
-    const pause = !motionPaused();
+    motionPaused = !motionPaused;
     try {
-      localStorage.setItem("foodme-motion", pause ? "off" : "on");
+      localStorage.setItem("foodme-motion", motionPaused ? "off" : "on");
     } catch {
-      return; // no storage, so the choice can't stick
+      // no storage: the choice lasts for this visit
     }
-    document.getElementById("kinetic").classList.toggle("still", pause);
-    el.textContent = pause ? "Play motion" : "Pause motion";
+    el.closest(".kinetic").classList.toggle("still", motionPaused);
+    el.textContent = motionLabel();
   },
   "enter-by-hand": (el) => {
     state.draft = { source_url: el.dataset.url };

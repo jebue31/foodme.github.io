@@ -184,26 +184,111 @@ async function submitAuth(form) {
 
 /* ---------- recipes ---------- */
 
+const BRACE = h`<span class="brace" aria-hidden="true"><i></i><i></i></span>`;
+const CARD_INGREDIENTS = 5;
+
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
     const image = safeHttpUrl(r.image_url);
+    const crowded = r.ingredients.length > CARD_INGREDIENTS;
+    const shown = r.ingredients.slice(0, crowded ? CARD_INGREDIENTS - 1 : CARD_INGREDIENTS);
     return h`
-      <a class="recipe-card" href="#/recipes/${r.id}">
-        ${image ? h`<img src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : h`<span class="recipe-mark" aria-hidden="true">${r.title[0].toUpperCase()}</span>`}
-        <span class="recipe-text">
-          <strong>${r.title}</strong>
-          <small>${meta || `${r.ingredients.length} ingredients`}</small>
+      <a class="recipe-card index-card" href="#/recipes/${r.id}">
+        <span class="ic-head"><strong>${r.title}</strong>${meta ? h`<small>${meta}</small>` : ""}</span>
+        <span class="ic-body">
+          <span class="ic-left">
+            ${shown.map((i) => h`<span>${i}</span>`)}
+            ${crowded ? h`<span class="ic-note">+ ${r.ingredients.length - shown.length} more</span>` : ""}
+          </span>
+          ${BRACE}
+          <span class="ic-right">
+            ${image ? h`<img src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+            ${r.steps || h`<span class="ic-note">No method yet.</span>`}
+          </span>
         </span>
       </a>`;
   });
 }
 
+/* ---------- the moving parts of the Recipes screen ---------- */
+
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+let tonightTimer;
+
+function motionPaused() {
+  try {
+    return localStorage.getItem("foodme-motion") === "off";
+  } catch {
+    return false;
+  }
+}
+
+// The planned dinner when there is one, otherwise a rotating suggestion from the cookbook.
+async function tonightChoices(recipes) {
+  const today = dayKey(new Date());
+  try {
+    const meals = await api.listMeals(today, today);
+    const dinners = meals.filter((m) => m.slot === "dinner").map((m) => recipeById(m.recipe_id)?.title).filter(Boolean);
+    if (dinners.length) return { label: "Tonight:", names: dinners };
+  } catch (err) {
+    console.error(err); // a decoration shouldn't take the page down
+  }
+  const names = recipes.map((r) => r.title);
+  for (let i = names.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [names[i], names[j]] = [names[j], names[i]];
+  }
+  return { label: "Tonight, maybe:", names };
+}
+
+function swingTonight(el) {
+  if (reducedMotion.matches) return;
+  el.animate(
+    [{ transform: "translateY(40%) rotate(-3deg)", opacity: 0 }, { transform: "none", opacity: 1 }],
+    { duration: 500, easing: "ease" },
+  );
+}
+
+function startTonight(names) {
+  clearInterval(tonightTimer);
+  const el = document.getElementById("tonight");
+  if (!el) return;
+  swingTonight(el);
+  if (names.length < 2) return;
+  let i = 0;
+  tonightTimer = setInterval(() => {
+    if (!el.isConnected) return clearInterval(tonightTimer);
+    if (reducedMotion.matches || motionPaused()) return;
+    i = (i + 1) % names.length;
+    el.textContent = names[i];
+    swingTonight(el);
+  }, 3500);
+}
+
+function kineticHero(recipes, tonight) {
+  // Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
+  const titles = recipes.map((r) => r.title);
+  const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
+  return h`
+    <section class="kinetic ${motionPaused() ? "still" : ""}" id="kinetic">
+      <h1><span>What's</span> <span>for</span> <span>dinner?</span></h1>
+      ${titles.length ? h`
+        <p class="tonight">${tonight.label} <span id="tonight">${tonight.names[0]}</span></p>
+        <div class="ticker" aria-hidden="true"><div>${[...run, ...run].map((t) => h`${t}<b>/</b>`)}</div></div>
+        <button class="link motion-toggle" data-action="toggle-motion">${motionPaused() ? "Play motion" : "Pause motion"}</button>` : ""}
+    </section>`;
+}
+
 async function recipesView() {
+  const token = renderToken;
   const recipes = await ensureRecipes();
+  const tonight = await tonightChoices(recipes);
+  if (token !== renderToken) return;
   shell("recipes", h`
+    ${kineticHero(recipes, tonight)}
     <div class="page-head">
-      <h1>Recipes</h1>
+      <h2>Recipes</h2>
       <a class="button primary" href="#/recipes/new">New recipe</a>
     </div>
     <form class="import card" id="import-form">
@@ -223,6 +308,10 @@ async function recipesView() {
         <p>Paste a recipe link above, or type in a family favourite.</p>
       </div>`}`);
   if (recipes.length) showRecipeMatches();
+  startTonight(tonight.names);
+  // Same speed however long the recipe names are: half the track is one loop, at 60px a second.
+  const track = document.querySelector(".ticker div");
+  if (track) track.style.animationDuration = `${track.offsetWidth / 2 / 60}s`;
 }
 
 function showRecipeMatches() {
@@ -269,27 +358,25 @@ async function recipeDetail(id) {
   const meta = [r.minutes ? `${r.minutes} minutes` : null, r.servings ? `Serves ${r.servings}` : null].filter(Boolean).join(" · ");
   shell("recipes", h`
     <a class="back" href="#/recipes">All recipes</a>
-    <article class="recipe">
-      ${image ? h`<img class="hero" src="${image}" alt="" referrerpolicy="no-referrer">` : ""}
-      <div class="page-head">
-        <h1>${r.title}</h1>
-        <div class="actions">
-          <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
-          <button class="danger" data-action="delete-recipe" data-id="${r.id}">Delete</button>
-        </div>
-      </div>
-      ${meta ? h`<p class="muted">${meta}</p>` : ""}
-      ${source ? h`<p><a href="${source}" target="_blank" rel="noopener noreferrer nofollow">View original</a></p>` : ""}
-      <div class="recipe-columns">
-        <section>
+    <div class="recipe-tools actions">
+      <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
+      <button class="danger" data-action="delete-recipe" data-id="${r.id}">Delete</button>
+    </div>
+    ${image ? h`<img class="hero" src="${image}" alt="" referrerpolicy="no-referrer">` : ""}
+    <article class="index-card recipe-sheet">
+      <header class="ic-head"><h1>${r.title}</h1>${meta ? h`<small>${meta}</small>` : ""}</header>
+      <div class="ic-body">
+        <section class="ic-left">
           <h2>Ingredients</h2>
-          ${r.ingredients.length ? h`<ul>${r.ingredients.map((i) => h`<li>${i}</li>`)}</ul>` : h`<p class="muted">None listed.</p>`}
+          ${r.ingredients.length ? h`<ul>${r.ingredients.map((i) => h`<li>${i}</li>`)}</ul>` : h`<p class="ic-note">None listed.</p>`}
         </section>
-        <section>
+        ${BRACE}
+        <section class="ic-right">
           <h2>Method</h2>
-          ${steps.length ? h`<ol>${steps.map((s) => h`<li>${s}</li>`)}</ol>` : h`<p class="muted">None listed.</p>`}
+          ${steps.length ? h`<ol>${steps.map((s) => h`<li>${s}</li>`)}</ol>` : h`<p class="ic-note">None listed.</p>`}
         </section>
       </div>
+      ${source ? h`<p><a href="${source}" target="_blank" rel="noopener noreferrer nofollow">View original</a></p>` : ""}
     </article>`);
 }
 
@@ -670,6 +757,16 @@ const actions = {
   "sign-out": () => api.signOut(),
   "sign-out-all": () => api.signOut("global"),
   "export-recipes": () => exportRecipes(),
+  "toggle-motion": (el) => {
+    const pause = !motionPaused();
+    try {
+      localStorage.setItem("foodme-motion", pause ? "off" : "on");
+    } catch {
+      return; // no storage, so the choice can't stick
+    }
+    document.getElementById("kinetic").classList.toggle("still", pause);
+    el.textContent = pause ? "Play motion" : "Pause motion";
+  },
   "enter-by-hand": (el) => {
     state.draft = { source_url: el.dataset.url };
     go("#/recipes/new");

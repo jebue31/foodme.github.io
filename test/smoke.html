@@ -166,6 +166,7 @@ async function recipeTests() {
   await until(() => $("#recipe-form"), "import form");
   check("import fills the form", $("#recipe-form").elements.ingredients.value.includes("lentils"));
   check("imported text stays escaped", !$("#recipe-form b") && text().includes("Check the import"));
+  check("a new recipe has no delete button", !button("Delete recipe"));
   await go("#/recipes/nope", () => text().includes("Recipe not found"));
   check("missing recipe message", true);
 
@@ -173,7 +174,15 @@ async function recipeTests() {
   win().confirm = () => true;
   $$(".recipe-card").find((c) => c.textContent.includes("Test stew")).click();
   await until(() => $(".recipe-sheet"), "stew");
-  clickButton("Delete");
+  check("the recipe page has no delete button", !$("[data-action=delete-recipe]"));
+  clickButton("Edit");
+  await until(() => $("#recipe-form"), "edit stew");
+  win().confirm = () => false;
+  clickButton("Delete recipe");
+  await sleep(40);
+  check("cancelling the prompt keeps the recipe", $("#recipe-form") && db().recipes.some((r) => r.title === "Test stew"));
+  win().confirm = () => true;
+  clickButton("Delete recipe");
   await until(() => $(".recipe-grid") && !text().includes("Chop."), "deleted");
   check("delete removes the recipe", !db().recipes.some((r) => r.title === "Test stew"));
   check("delete leaves the ticker", !$(".ticker").textContent.includes("Test stew"));
@@ -406,9 +415,9 @@ async function layoutTests() {
       check(`no sideways scroll at ${width}px on ${hash.slice(0, 12)}`, root.scrollWidth <= root.clientWidth, `${root.scrollWidth} > ${root.clientWidth}`);
     }
   }
-  await go(`#/recipes/${longId}`, () => $(".recipe-sheet"));
+  await go(`#/recipes/${longId}/edit`, () => $("#recipe-form"));
   win().confirm = () => true;
-  clickButton("Delete");
+  clickButton("Delete recipe");
   await until(() => !db().recipes.some((r) => r.id === longId) && $(".recipe-card"), "long recipe deleted");
   const main = {};
   for (const hash of ["#/recipes", "#/plan", "#/grocery", "#/profile"]) {

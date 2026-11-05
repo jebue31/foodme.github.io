@@ -3,10 +3,6 @@
 The owner's ideas, in order. This repo is public, so no personal details here.
 Current status lives in `session-state.md`.
 
-## Small fixes
-- Move Delete off the recipe page to the bottom of the edit screen, so it doesn't get
-  clicked by accident. Keep the "Are you sure?" prompt.
-
 ## Next steps, in order
 1. Recipes page cards: keep the lined card but drop the curly bracket. Show a picture and
    a short restaurant-menu style blurb instead of recipe text. The full recipe card stays.

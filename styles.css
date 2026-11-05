@@ -148,6 +148,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .hero { width: 100%; max-height: 340px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem; }
 .recipe-form { padding: 1.25rem; margin-top: 1rem; display: grid; gap: 1rem; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.delete-recipe { margin-top: 2.5rem; }
 
 /* old lined index card: fixed colours in both themes, because it's paper.
    Everything inside sits on the --rule grid so text stays on the printed lines.

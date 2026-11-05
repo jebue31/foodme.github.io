@@ -399,7 +399,6 @@ async function recipeDetail(id) {
     <a class="back" href="#/recipes">All recipes</a>
     <div class="recipe-tools actions">
       <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
-      <button class="danger" data-action="delete-recipe" data-id="${r.id}">Delete</button>
     </div>
     ${image ? h`<img class="hero" src="${image}" alt="" referrerpolicy="no-referrer">` : ""}
     <article class="index-card recipe-sheet">
@@ -443,7 +442,8 @@ async function recipeForm(id) {
       </label>
       <label>Source link <input name="source_url" type="url" value="${r.source_url ?? ""}"></label>
       <button class="primary" type="submit">Save recipe</button>
-    </form>`);
+    </form>
+    ${existing ? h`<button class="danger delete-recipe" data-action="delete-recipe" data-id="${existing.id}">Delete recipe</button>` : ""}`);
 }
 
 async function submitRecipe(form) {

@@ -237,6 +237,8 @@ let tonightTimer;
 let tonightIndex = Math.floor(Math.random() * 1000);
 let bannerEntered = false; // the headline rises once, not on every page change
 let shownHeadline = null;
+let tonightFor = null; // the day state.tonight was worked out for
+const refreshTonight = () => { tonightFor = null; };
 let motionPaused = false;
 try {
   motionPaused = localStorage.getItem("foodme-motion") === "off";
@@ -247,8 +249,7 @@ const motionOff = () => motionPaused || reducedMotion.matches;
 const motionLabel = () => (motionPaused ? "Play motion" : "Pause motion");
 
 // The planned dinner when there is one, otherwise a rotating suggestion from the cookbook.
-async function tonightChoices() {
-  const today = dayKey(new Date());
+async function tonightChoices(today) {
   try {
     const meals = await api.listMeals(today, today);
     const dinners = meals.filter((m) => m.slot === "dinner").map((m) => recipeById(m.recipe_id)?.title).filter(Boolean);
@@ -259,13 +260,17 @@ async function tonightChoices() {
   return { label: "Tonight, maybe:", names: (state.recipes ?? []).map((r) => r.title) };
 }
 
+// Only asks the database when the plan or recipes changed, or the day rolled over.
 async function ensureBanner() {
+  const today = dayKey(new Date());
+  if (tonightFor === today) return;
   try {
     await ensureRecipes();
   } catch (err) {
     console.error(err);
   }
-  state.tonight = await tonightChoices();
+  state.tonight = await tonightChoices(today);
+  tonightFor = today;
 }
 
 function swing(el, duration = 500) {
@@ -276,11 +281,15 @@ function swing(el, duration = 500) {
   );
 }
 
-function kineticBanner(headline) {
-  const { label, names } = state.tonight ?? { label: "", names: [] };
-  // Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
-  const titles = (state.recipes ?? []).map((r) => r.title);
+// Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
+function tickerItems() {
+  const titles = state.recipes.map((r) => r.title);
   const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
+  return [...run, ...run].map((t) => h`${t}<b>/</b>`);
+}
+
+function kineticBanner(headline) {
+  const { label, names } = state.tonight;
   return h`
     <div class="kinetic ${bannerEntered || motionOff() ? "" : "enter"} ${motionPaused ? "still" : ""}">
       <p class="kinetic-title">${headline.map((word) => h`<span>${word}</span> `)}<a class="kinetic-brand" href="#/recipes">FoodMe</a></p>
@@ -289,7 +298,7 @@ function kineticBanner(headline) {
           <p class="tonight">${label} <span id="tonight">${names[tonightIndex % names.length]}</span></p>
           <button class="link motion-toggle" data-action="toggle-motion">${motionLabel()}</button>
         </div>
-        <div class="ticker" aria-hidden="true"><div>${[...run, ...run].map((t) => h`${t}<b>/</b>`)}</div></div>` : ""}
+        <div class="ticker" aria-hidden="true"><div>${tickerItems()}</div></div>` : ""}
     </div>`;
 }
 
@@ -461,6 +470,7 @@ async function submitRecipe(form) {
       state.draft = null;
     }
     resort();
+    refreshTonight();
     go(`#/recipes/${saved.id}`);
   });
 }
@@ -794,6 +804,7 @@ const actions = {
     if (!confirm("Delete this recipe? It will also leave your meal plan.")) return;
     await api.deleteRecipe(el.dataset.id);
     state.recipes = state.recipes.filter((r) => r.id !== el.dataset.id);
+    refreshTonight();
     go("#/recipes");
   },
   week: (el) => {
@@ -807,10 +818,12 @@ const actions = {
     const slot = dialog.querySelector("[name=picker-slot]:checked").value;
     await api.addMeal({ day: dialog.dataset.day, slot, recipe_id: el.dataset.id });
     dialog.close();
+    refreshTonight();
     render();
   },
   "remove-meal": async (el) => {
     await api.removeMeal(el.dataset.id);
+    refreshTonight();
     render();
   },
   "build-list": (el) => buildList(el),
@@ -887,6 +900,7 @@ function clearDragState() {
 const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
   if (mealId) await api.moveMeal(mealId, day, slot);
   else await api.addMeal({ day, slot, recipe_id: recipeId });
+  refreshTonight();
   render();
 });
 
@@ -944,6 +958,7 @@ if (!api.configured) {
       state.recipes = null;
       state.draft = null;
       state.profile = undefined;
+      refreshTonight();
     }
     if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
     if (event === "SIGNED_IN" && wasUser === session?.user?.id) return; // tab refocus

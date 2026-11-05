@@ -90,9 +90,15 @@ async function bannerTests() {
   $(".kinetic-brand").click();
   await until(() => $(".recipe-card"), "stamp link");
   check("FoodMe stamp goes home", true);
+  const storage = win().Storage.prototype;
+  const realGet = storage.getItem;
+  let queries = 0;
+  storage.getItem = function (key) { if (key === "fake") queries += 1; return realGet.call(this, key); };
   $(".hello").click();
   await until(() => $("#name-form"), "hello link");
+  storage.getItem = realGet;
   check("Hi link opens Profile", true);
+  check("changing page doesn't ask the database again", queries === 0, `${queries} queries`);
 
   await go("#/recipes", () => $(".recipe-card"));
   check("ticker is moving", doc().getAnimations().some((a) => a.animationName === "slide" && a.playState === "running"));

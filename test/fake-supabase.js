@@ -98,7 +98,7 @@
         if (this.sort) rows.sort((a, b) => String(a[this.sort]).localeCompare(String(b[this.sort])));
       }
       save(db);
-      return { data: this.one ? rows[0] : rows, error: null };
+      return { data: this.one ? rows[0] ?? null : rows, error: null };
     }
   }
 

@@ -74,6 +74,7 @@ async function bannerTests() {
   check("Recipes headline", headline() === "What's for dinner?", headline());
   check("Tonight shows planned dinner", $(".tonight").textContent.includes("Tonight: Tomato soup"), $(".tonight").textContent);
   check("ticker lists recipes", $(".ticker").textContent.includes("Lentil curry"));
+  check("ticker strip stays a fixed size", $$(".ticker span").length === 48, $$(".ticker span").length);
   await go("#/plan", () => $(".days"));
   check("Plan headline", headline() === "What's the plan?", headline());
   check("Plan link is lit", $(".tab[aria-current]").textContent.includes("Plan"));
@@ -176,6 +177,14 @@ async function recipeTests() {
   await until(() => $(".recipe-grid") && !text().includes("Chop."), "deleted");
   check("delete removes the recipe", !db().recipes.some((r) => r.title === "Test stew"));
   check("delete leaves the ticker", !$(".ticker").textContent.includes("Test stew"));
+
+  const planned = db().recipes.find((r) => r.title === "Tomato soup");
+  await go(`#/recipes/${planned.id}/edit`, () => $("#recipe-form"));
+  fill($("#recipe-form"), { title: "Tomato bisque" });
+  submit($("#recipe-form"));
+  await until(() => $(".recipe-sheet h1")?.textContent === "Tomato bisque", "renamed");
+  await sleep(60);
+  check("Tonight follows a renamed recipe", $(".tonight").textContent.includes("Tomato bisque"), $(".tonight").textContent);
 }
 
 async function planTests() {

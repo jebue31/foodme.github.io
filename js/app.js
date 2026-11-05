@@ -234,7 +234,9 @@ const HEADLINES = {
 const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let tonightTimer;
-let tonightIndex = Math.floor(Math.random() * 1000); // start on a random recipe
+const randomStart = Math.floor(Math.random() * 1000); // so big cookbooks don't always show the A's
+const TICKER_LENGTH = 24; // enough to fill a wide screen, without a huge strip for big cookbooks
+let tonightIndex = randomStart;
 let bannerEntered = false; // the headline rises once, not on every page change
 let shownHeadline = null;
 let tonightFor = null; // the day state.tonight was worked out for
@@ -281,10 +283,10 @@ function swing(el, duration = 500) {
   );
 }
 
-// Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
+// Doubled so the -50% loop is seamless.
 function tickerItems() {
   const titles = state.recipes.map((r) => r.title);
-  const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
+  const run = Array.from({ length: TICKER_LENGTH }, (_, i) => titles[(randomStart + i) % titles.length]);
   return [...run, ...run].map((t) => h`${t}<span>/</span>`);
 }
 

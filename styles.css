@@ -33,7 +33,7 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; } /* the gutter keeps every page the same width */
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); }
-h1, h2 { font-family: var(--sans); font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin: 0; }
+h1, h2 { font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin: 0; }
 h1 { font-size: 2.6rem; }
 h2 { font-size: 1.3rem; }
 a { color: var(--accent); }

@@ -1,7 +1,8 @@
 # FoodMe
 
 Static recipe, meal plan and grocery list site on GitHub Pages, backed by Supabase.
-See README.md for setup and `docs/session-state.md` for where the work stands.
+See README.md for setup, `docs/session-state.md` for where the work stands, and
+`docs/roadmap.md` for the to-do list.
 
 ## Keeping context safe
 

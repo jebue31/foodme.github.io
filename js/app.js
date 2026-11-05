@@ -22,6 +22,7 @@ const state = {
   draft: null,
   query: "",
   profile: undefined, // undefined = not loaded yet, null = no name saved
+  tonight: null,
 };
 let renderToken = 0;
 
@@ -102,19 +103,30 @@ async function ensureProfile() {
 /* ---------- shell ---------- */
 
 function shell(active, content) {
-  const tab = (href, id, label) =>
-    h`<a href="${href}" class="tab" ${id === active ? h`aria-current="page"` : ""}>${label}</a>`;
+  const tab = (href, id, code, label) =>
+    h`<a href="${href}" class="tab" ${id === active ? h`aria-current="page"` : ""}><i aria-hidden="true">${code}</i>${label}</a>`;
   root.innerHTML = h`
     <header class="topbar">
-      <a class="brand" href="#/recipes">FoodMe</a>
-      <nav class="tabs" aria-label="Main">
-        ${tab("#/recipes", "recipes", "Recipes")}
-        ${tab("#/plan", "plan", "Plan")}
-        ${tab("#/grocery", "grocery", "Grocery")}
-      </nav>
       <a class="hello" href="#/profile" ${active === "profile" ? h`aria-current="page"` : ""}>Hi, ${displayName()}</a>
     </header>
-    <main class="page ${active === "plan" ? "wide" : ""}">${content}</main>`.s;
+    <main class="page">
+      ${kineticBanner(active)}
+      <div class="page-head" id="nav-row">
+        <nav class="tabs" aria-label="Main">
+          ${tab("#/recipes", "recipes", "A1", "Recipes")}
+          ${tab("#/plan", "plan", "B2", "Plan")}
+          ${tab("#/grocery", "grocery", "C3", "Grocery")}
+        </nav>
+      </div>
+      ${content}
+    </main>`.s;
+  // The page links sit beside the page's own heading when it has one.
+  const heading = root.querySelector(".page-head:not(#nav-row) h1");
+  if (heading) {
+    heading.after(root.querySelector(".tabs"));
+    document.getElementById("nav-row").remove();
+  }
+  startBanner();
 }
 
 /* ---------- auth screens ---------- */
@@ -211,10 +223,12 @@ function recipeCards(recipes) {
   });
 }
 
-/* ---------- the moving parts of the Recipes screen ---------- */
+/* ---------- the "What's for dinner?" banner, on every signed-in page ---------- */
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let tonightTimer;
+let tonightIndex = Math.floor(Math.random() * 1000);
+let bannerEntered = false; // the headline rises once, not on every page change
 
 function motionPaused() {
   try {
@@ -225,7 +239,7 @@ function motionPaused() {
 }
 
 // The planned dinner when there is one, otherwise a rotating suggestion from the cookbook.
-async function tonightChoices(recipes) {
+async function tonightChoices() {
   const today = dayKey(new Date());
   try {
     const meals = await api.listMeals(today, today);
@@ -234,61 +248,87 @@ async function tonightChoices(recipes) {
   } catch (err) {
     console.error(err); // a decoration shouldn't take the page down
   }
-  const names = recipes.map((r) => r.title);
-  for (let i = names.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [names[i], names[j]] = [names[j], names[i]];
-  }
-  return { label: "Tonight, maybe:", names };
+  return { label: "Tonight, maybe:", names: (state.recipes ?? []).map((r) => r.title) };
 }
 
-function swingTonight(el) {
+async function ensureBanner() {
+  try {
+    await ensureRecipes();
+  } catch (err) {
+    console.error(err);
+  }
+  state.tonight = await tonightChoices();
+}
+
+function swingTonight(el, duration = 500) {
   if (reducedMotion.matches) return;
   el.animate(
     [{ transform: "translateY(40%) rotate(-3deg)", opacity: 0 }, { transform: "none", opacity: 1 }],
-    { duration: 500, easing: "ease" },
+    { duration, easing: "ease" },
   );
 }
 
-function startTonight(names) {
+const HEADLINES = {
+  plan: ["What's", "the", "plan?"],
+  grocery: ["What's", "the", "damage?"],
+};
+const DEFAULT_HEADLINE = ["What's", "for", "dinner?"];
+let headline = DEFAULT_HEADLINE;
+let shownHeadline = null;
+
+function kineticBanner(active) {
+  headline = HEADLINES[active] ?? DEFAULT_HEADLINE;
+  const { label, names } = state.tonight ?? { label: "", names: [] };
+  // Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
+  const titles = (state.recipes ?? []).map((r) => r.title);
+  const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
+  return h`
+    <section class="kinetic ${bannerEntered ? "" : "enter"} ${motionPaused() ? "still" : ""}" id="kinetic">
+      <p class="kinetic-title">${headline.map((word) => h`<span>${word}</span> `)}<a class="kinetic-brand" href="#/recipes">FoodMe</a></p>
+      ${names.length ? h`
+        <div class="kinetic-row">
+          <p class="tonight">${label} <span id="tonight">${names[tonightIndex % names.length]}</span></p>
+          <button class="link motion-toggle" data-action="toggle-motion">${motionPaused() ? "Play motion" : "Pause motion"}</button>
+        </div>
+        <div class="ticker" aria-hidden="true"><div>${[...run, ...run].map((t) => h`${t}<b>/</b>`)}</div></div>` : ""}
+    </section>`;
+}
+
+function startBanner() {
   clearInterval(tonightTimer);
+  // Moving between pages: only the last word swings into place.
+  if (shownHeadline && shownHeadline !== headline && !motionPaused()) {
+    swingTonight(document.querySelector(".kinetic-title span:nth-child(3)"), 900);
+  }
+  shownHeadline = headline;
+  const track = document.querySelector(".ticker div");
+  if (track) {
+    // Same speed however long the names are: half the track is one loop, at 60px a second.
+    // The delay keeps the ticker from jumping back to the start on every page change.
+    const seconds = track.offsetWidth / 2 / 60;
+    track.style.animationDuration = `${seconds}s`;
+    track.style.animationDelay = `${-(performance.now() / 1000 % seconds)}s`;
+  }
   const el = document.getElementById("tonight");
+  const names = state.tonight?.names ?? [];
   if (!el) return;
-  swingTonight(el);
+  if (!bannerEntered) swingTonight(el);
+  bannerEntered = true;
   if (names.length < 2) return;
-  let i = 0;
   tonightTimer = setInterval(() => {
     if (!el.isConnected) return clearInterval(tonightTimer);
     if (reducedMotion.matches || motionPaused()) return;
-    i = (i + 1) % names.length;
-    el.textContent = names[i];
+    tonightIndex += 1;
+    el.textContent = names[tonightIndex % names.length];
     swingTonight(el);
   }, 3500);
 }
 
-function kineticHero(recipes, tonight) {
-  // Enough titles to fill a wide screen, doubled so the -50% loop is seamless.
-  const titles = recipes.map((r) => r.title);
-  const run = Array.from({ length: Math.max(titles.length, 12) }, (_, i) => titles[i % titles.length]);
-  return h`
-    <section class="kinetic ${motionPaused() ? "still" : ""}" id="kinetic">
-      <h1><span>What's</span> <span>for</span> <span>dinner?</span></h1>
-      ${titles.length ? h`
-        <p class="tonight">${tonight.label} <span id="tonight">${tonight.names[0]}</span></p>
-        <div class="ticker" aria-hidden="true"><div>${[...run, ...run].map((t) => h`${t}<b>/</b>`)}</div></div>
-        <button class="link motion-toggle" data-action="toggle-motion">${motionPaused() ? "Play motion" : "Pause motion"}</button>` : ""}
-    </section>`;
-}
-
 async function recipesView() {
-  const token = renderToken;
   const recipes = await ensureRecipes();
-  const tonight = await tonightChoices(recipes);
-  if (token !== renderToken) return;
   shell("recipes", h`
-    ${kineticHero(recipes, tonight)}
     <div class="page-head">
-      <h2>Recipes</h2>
+      <h1>Recipes</h1>
       <a class="button primary" href="#/recipes/new">New recipe</a>
     </div>
     <form class="import card" id="import-form">
@@ -308,10 +348,6 @@ async function recipesView() {
         <p>Paste a recipe link above, or type in a family favourite.</p>
       </div>`}`);
   if (recipes.length) showRecipeMatches();
-  startTonight(tonight.names);
-  // Same speed however long the recipe names are: half the track is one loop, at 60px a second.
-  const track = document.querySelector(".ticker div");
-  if (track) track.style.animationDuration = `${track.offsetWidth / 2 / 60}s`;
 }
 
 function showRecipeMatches() {
@@ -471,13 +507,13 @@ async function planView() {
   shell("plan", h`
     <div class="page-head">
       <h1>Meal plan</h1>
-      <button class="primary" data-action="build-list">Make grocery list</button>
-    </div>
-    <div class="week-nav">
-      <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
-      <strong>${weekLabel(state.week)}</strong>
-      <button data-action="week" data-step="7" aria-label="Next week">›</button>
-      <button class="link" data-action="week" data-step="0">This week</button>
+      <div class="week-nav">
+        <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
+        <strong>${weekLabel(state.week)}</strong>
+        <button data-action="week" data-step="7" aria-label="Next week">›</button>
+        <button data-action="week" data-step="0">This week</button>
+        <button class="primary" data-action="build-list">Make grocery list</button>
+      </div>
     </div>
     <div class="planner">
       <aside class="plan-recipes card" aria-label="Your recipes">
@@ -587,13 +623,13 @@ async function groceryView() {
   shell("grocery", h`
     <div class="page-head">
       <h1>Grocery list</h1>
-      ${done.length ? h`<button data-action="clear-checked">Clear ${done.length} checked</button>` : ""}
-    </div>
-    <div class="week-nav">
-      <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
-      <strong>${weekLabel(state.week)}</strong>
-      <button data-action="week" data-step="7" aria-label="Next week">›</button>
-      <button class="primary" data-action="build-list">${items.some((i) => i.from_plan) ? "Rebuild" : "Build"} from this week</button>
+      <div class="week-nav">
+        ${done.length ? h`<button data-action="clear-checked">Clear ${done.length} checked</button>` : ""}
+        <button data-action="week" data-step="-7" aria-label="Previous week">‹</button>
+        <strong>${weekLabel(state.week)}</strong>
+        <button data-action="week" data-step="7" aria-label="Next week">›</button>
+        <button class="primary" data-action="build-list">${items.some((i) => i.from_plan) ? "Rebuild" : "Build"} from this week</button>
+      </div>
     </div>
     <form class="inline add-item" id="item-form">
       <input name="name" required maxlength="200" placeholder="Add something else, like paper towels" aria-label="Add an item">
@@ -738,7 +774,7 @@ const render = guarded(async () => {
   const token = ++renderToken;
   if (state.recovering) return authView("newpass");
   if (!state.session) return authView();
-  await ensureProfile();
+  await Promise.all([ensureProfile(), ensureBanner()]);
   const [, section, id, action] = location.hash.split("/");
   if (token !== renderToken) return;
   if (section === "profile") return profileView();

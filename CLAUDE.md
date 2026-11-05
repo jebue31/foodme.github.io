@@ -24,7 +24,9 @@ automatically after compaction, so anything that must survive belongs there.
   repo. Do not ask the user to send them. Only the URL and publishable key go in `config.js`.
 - Keep personal details out of commits and docs. Commit as
   `git -c user.name=jebue31 -c user.email=jebue31@users.noreply.github.com commit`.
-- Build and test one feature at a time, then push for the user to try.
+- Build and test one feature at a time locally. The owner reviews it first.
+- Ask before big changes or anything that could break things, such as merging a branch
+  into `main` or pushing to `main`, which changes the live site.
 - Test locally with `test/server.ps1` (fake backend, port 8123) and `test/tests.html`.
 - Give database changes as a re-runnable `supabase/schema.sql` before relying on them.
 - No build step, and nothing that needs paid services without asking first.

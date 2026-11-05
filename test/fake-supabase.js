@@ -4,6 +4,47 @@
   const save = (db) => localStorage.setItem("fake", JSON.stringify(db));
   const uid = () => crypto.randomUUID();
   const listeners = [];
+
+  // First visit in a browser: create a made-up demo user with sample recipes and sign in.
+  // After signing out, use the email and password below. They only exist in this fake backend.
+  if (!localStorage.getItem("fake-demo")) {
+    const email = "demo@foodme.test";
+    const user_id = uid();
+    const db = load();
+    const recipe = (title, minutes, servings, ingredients, steps) => ({
+      id: uid(), user_id, title, minutes, servings, ingredients, steps: steps.join("\n"),
+      image_url: null, source_url: "https://example.com/recipe", created_at: new Date().toISOString(),
+    });
+    const recipes = [
+      recipe("Tomato soup", 35, 4,
+        ["2 tbsp olive oil", "1 onion, diced", "2 cloves garlic", "800 g tinned tomatoes", "500 ml stock", "1 tsp sugar", "Salt and pepper", "Basil to serve"],
+        ["Soften the onion in the oil over a low heat for ten minutes.", "Add the garlic and cook for a minute.", "Add the tomatoes, stock and sugar, and simmer for twenty minutes.", "Blend until smooth and season to taste.", "Serve topped with torn basil."]),
+      recipe("Green salad", 15, 2,
+        ["1 head lettuce", "1 cucumber", "2 tbsp vinaigrette"],
+        ["Wash and tear the lettuce.", "Slice the cucumber.", "Toss with the vinaigrette."]),
+      recipe("Sheet pan pizza with roasted peppers", 50, 6,
+        ["500 g pizza dough", "1 cup tomato sauce", "200 g mozzarella", "2 red peppers", "1 red onion, sliced"],
+        ["Stretch the dough onto an oiled tray.", "Top with the sauce, cheese and vegetables.", "Bake at 230 C for twenty minutes."]),
+      recipe("Lentil curry", 40, 4,
+        ["1 cup red lentils", "1 onion, diced", "2 tbsp curry paste", "400 ml coconut milk", "2 cups stock", "1 lime", "Rice to serve"],
+        ["Fry the onion and curry paste for five minutes.", "Add the lentils, coconut milk and stock.", "Simmer for twenty-five minutes, stirring now and then.", "Finish with lime juice and serve over rice."]),
+      recipe("Blueberry pancakes", 20, 3,
+        ["1.5 cups flour", "1 tbsp baking powder", "1 egg", "1.25 cups milk", "1 cup blueberries"],
+        ["Whisk everything except the blueberries into a smooth batter.", "Fold in the blueberries.", "Fry small ladlefuls until golden on both sides."]),
+    ];
+    const when = (offset) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const meal = (offset, slot, r) => ({ id: uid(), user_id, day: when(offset), slot, recipe_id: r.id, created_at: new Date().toISOString() });
+    db.users[email] = { id: user_id, password: "demo-password" };
+    db.recipes.push(...recipes);
+    db.meal_plan.push(meal(0, "dinner", recipes[0]), meal(1, "dinner", recipes[3]), meal(1, "breakfast", recipes[4]));
+    save(db);
+    localStorage.setItem("fake-session", JSON.stringify({ user: { id: user_id, email } }));
+    localStorage.setItem("fake-demo", "1");
+  }
   const getSession = () => JSON.parse(localStorage.getItem("fake-session") ?? "null");
   const emit = (event, session) => listeners.forEach((f) => f(event, session));
   const setSession = (event, s) => {

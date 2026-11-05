@@ -11,7 +11,7 @@
   --olive: #5d6b34;
   --danger: #a32222;
   --shadow: 0 1px 2px rgb(60 40 20 / .08);
-  --type: "American Typewriter", "Courier New", Courier, monospace;
+  --type: Cambria, "Noto Serif", "Iowan Old Style", Georgia, serif; /* Cambria first: Georgia's old-style 1 looks like an I */
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -80,25 +80,44 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 
 /* app frame */
 .topbar {
-  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1rem;
-  padding: .5rem 16px; background: var(--bg); border-bottom: 2px solid var(--ink);
+  display: flex; justify-content: flex-end;
+  padding: .4rem 16px 0;
 }
-.brand { font: 800 1.5rem var(--sans); letter-spacing: -.04em; color: var(--accent); text-decoration: none; }
-.tabs { display: flex; gap: .25rem; flex: 1; }
-.tab { padding: .4rem .8rem; color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; }
-.tab[aria-current] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 800; }
+.tabs { display: flex; gap: .5rem; flex: 1; }
+/* jukebox selector buttons: the current page is pressed in and lit */
+.tab {
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 3px; padding: .25rem .7rem; color: var(--ink); font-weight: 700;
+  text-decoration: none; background: var(--surface); border: 2px solid var(--ink); border-bottom-width: 5px; border-radius: 6px;
+}
+.tab i { font-style: normal; font-size: .8rem; font-weight: 800; color: var(--accent); }
+.tab:hover { background: var(--accent-soft); }
+.tab[aria-current] {
+  margin-top: 3px; margin-bottom: 0; color: var(--accent-ink); font-weight: 800;
+  background: var(--accent); border-bottom-width: 2px;
+}
+.tab[aria-current] i { color: inherit; }
 .hello {
   max-width: 11rem; padding: .3rem .6rem; border-radius: 8px; font-size: .92rem; color: var(--ink);
   text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hello:hover, .hello[aria-current] { background: var(--accent-soft); }
-.profile { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: .75rem; align-items: start; }
+.profile { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(340px, calc(25% - .6rem))), 1fr)); gap: .75rem; align-items: start; }
 .profile .card { padding: 1rem; display: grid; gap: .75rem; }
 .profile .card p { margin: 0; }
 .profile button { justify-self: start; }
 .danger-zone { border-color: var(--danger); }
-.page { max-width: 960px; margin: 0 auto; padding: 1.25rem 16px 3rem; }
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+/* one width on every page: it fills the screen on phones and tablets, is at least 1240px when
+   there's room (the meal plan's seven columns need it), and grows on very wide monitors.
+   The gutter keeps pages with and without a scrollbar the same width. */
+html { scrollbar-gutter: stable; }
+.topbar, .page { max-width: clamp(1240px, 90vw, 2400px); margin-inline: auto; }
+.page { padding: 1.25rem 16px 3rem; }
+.page-head {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: .25rem 1rem;
+  flex-wrap: wrap; margin-bottom: .75rem; padding-block: .4rem; background: var(--bg);
+}
+/* the page links name the page, so the heading stays for screen readers only */
+.page-head h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .actions { display: flex; gap: .5rem; }
 .back { display: inline-block; margin-bottom: .75rem; font-size: .92rem; }
 .empty { text-align: center; color: var(--muted); padding: 3rem 1rem; }
@@ -114,26 +133,27 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 /* old lined index card: fixed colours in both themes, because it's paper.
    Everything inside sits on the --rule grid so text stays on the printed lines. */
 .index-card {
-  --rule: 1.5rem; --top: .6rem; --pad: .9rem; --paper: #fbf3e1; --blue: #a9c4dc; --red: #d0584a; --pen: #2a211a;
+  --rule: 1.5rem; --top: .6rem; --pad: .9rem; --paper: #fdf8ec; --blue: #dfe9f1; --head: #e8a79e; --red: #d0584a; --pen: #1a130d;
   display: block; position: relative; min-width: 0; padding: var(--top) var(--pad) .75rem;
-  color: var(--pen); text-decoration: none; font: .9rem/var(--rule) var(--type);
+  color: var(--pen); text-decoration: none; font: 1rem/var(--rule) var(--type);
   background: var(--paper) repeating-linear-gradient(to bottom, transparent 0 calc(var(--rule) - 1px), var(--blue) calc(var(--rule) - 1px) var(--rule)) 0 calc(var(--top) - .22rem);
   border-radius: 3px; box-shadow: 0 1px 2px rgb(40 25 10 / .25), 0 6px 14px rgb(40 25 10 / .12);
 }
-@media (prefers-color-scheme: dark) { .index-card { --paper: #efe3c8; --blue: #9db6cb; } }
+@media (prefers-color-scheme: dark) { .index-card { --paper: #f3ead6; --blue: #d3dfe8; } }
+.index-card { font-variant-numeric: lining-nums; }
 .ic-head { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 .75rem; }
-.ic-head::after { content: ""; position: absolute; left: calc(var(--pad) * -1); right: calc(var(--pad) * -1); bottom: .22rem; height: 2px; background: var(--red); }
+.ic-head::after { content: ""; position: absolute; left: calc(var(--pad) * -1); right: calc(var(--pad) * -1); bottom: .22rem; height: 2px; background: var(--head); }
 .ic-head strong, .ic-head h1 { font: 800 1.05rem/var(--rule) var(--sans); letter-spacing: -.02em; min-width: 0; overflow-wrap: anywhere; }
-.ic-head small { font-size: .78rem; white-space: nowrap; line-height: var(--rule); }
+.ic-head small { font-size: .85rem; white-space: nowrap; line-height: var(--rule); }
 .ic-body { display: grid; grid-template-columns: minmax(0, 2fr) 1.4rem minmax(0, 3fr); gap: .5rem; }
 .ic-left, .ic-right { display: block; min-width: 0; overflow-wrap: anywhere; }
-.ic-note { color: #5f5247; }
+.ic-note { color: #54483e; }
 
 /* in the list: a fixed window of five lines */
-.recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+.recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(320px, calc(25% - .75rem))), 1fr)); gap: 1rem; }
 .recipe-card { transition: transform .15s ease; }
 .recipe-card:hover, .recipe-card:focus-visible { transform: rotate(-.6deg) translateY(-2px); }
-.recipe-card { font-size: .85rem; }
+.recipe-card { font-size: .95rem; }
 .recipe-card .ic-body { height: calc(var(--rule) * 5); grid-template-columns: minmax(0, 1fr) 1.2rem minmax(0, 1fr); }
 .recipe-card .ic-left, .recipe-card .ic-right { height: 100%; overflow: hidden; }
 .recipe-card .ic-left span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -152,32 +172,40 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .brace i:last-child::after { top: 0; border-top-width: var(--w); border-left-width: var(--w); border-top-left-radius: var(--r); }
 
 /* the full recipe: the same card, as long as it needs to be */
-.recipe-sheet { --rule: 1.75rem; --pad: 1.4rem; font-size: 1rem; padding-bottom: 1.25rem; }
+.recipe-sheet { --rule: 1.85rem; --pad: 1.4rem; font-size: 1.1rem; padding-bottom: 1.25rem; }
 .recipe-sheet .ic-head h1 { font-size: 1.5rem; }
 .recipe-sheet .ic-head small { font-size: .9rem; }
-.recipe-sheet h2 { font: 700 .95rem/var(--rule) var(--type); letter-spacing: .06em; text-transform: uppercase; color: #a8392c; }
+.recipe-sheet h2 { font: 800 .85rem/var(--rule) var(--sans); letter-spacing: .08em; text-transform: uppercase; color: #a8392c; }
 .recipe-sheet ul, .recipe-sheet ol { margin: 0; padding: 0; list-style: none; }
 .recipe-sheet ol { padding-left: 1.7rem; list-style: decimal; }
 .recipe-sheet p { margin: 0; }
 .recipe-sheet a { color: #a8392c; }
 
-/* the Recipes home screen is the only place that moves */
-.kinetic { margin-bottom: 1.75rem; }
-.kinetic h1 { font-size: clamp(3rem, 12vw, 6rem); line-height: .95; letter-spacing: -.045em; }
-.kinetic h1 span { display: inline-block; animation: rise .8s cubic-bezier(.2, .9, .2, 1) both; }
-.kinetic h1 span:nth-child(2) { animation-delay: .12s; }
-.kinetic h1 span:nth-child(3) { animation-delay: .24s; color: var(--accent); }
-.tonight { margin: .75rem 0 1rem; font-size: clamp(1.15rem, 3.5vw, 1.5rem); font-weight: 600; letter-spacing: -.02em; }
+/* the banner at the top of every signed-in page */
+.kinetic { margin-bottom: .5rem; }
+.kinetic-title { margin: 0; font: 800 clamp(2rem, 9.5vw, 4rem)/1 var(--sans); letter-spacing: -.045em; }
+.kinetic-brand {
+  display: inline-block; margin-left: .15em; padding: 0 .3em; font-size: max(.4em, 1.1rem); line-height: 1.25; letter-spacing: -.02em;
+  color: var(--olive); text-decoration: none; white-space: nowrap; vertical-align: .2em;
+  border: 2px solid currentColor; border-radius: 3px; transform: rotate(-5deg);
+}
+.kinetic-title span { display: inline-block; }
+.kinetic-title span:nth-child(3) { color: var(--accent); }
+.kinetic.enter .kinetic-title span { animation: rise .8s cubic-bezier(.2, .9, .2, 1) both; }
+.kinetic.enter .kinetic-title span:nth-child(2) { animation-delay: .12s; }
+.kinetic.enter .kinetic-title span:nth-child(3) { animation-delay: .24s; }
+.kinetic-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: .4rem 0 .5rem; }
+.tonight { margin: 0; min-width: 0; font-size: clamp(1.05rem, 3vw, 1.3rem); font-weight: 600; letter-spacing: -.02em; }
 .tonight span { display: inline-block; color: var(--accent); font-weight: 800; }
 .ticker { overflow: hidden; white-space: nowrap; border-block: 2px solid var(--ink); padding: .3rem 0; font-size: 1.2rem; font-weight: 700; }
 .ticker div { display: inline-block; animation: slide 40s linear infinite; }
 .ticker b { color: var(--accent); margin: 0 .7rem; }
 .kinetic.still .ticker div { animation-play-state: paused; }
-.motion-toggle { display: block; margin: .4rem 0 0 auto; font-size: .82rem; }
+.motion-toggle { flex: none; font-size: .82rem; }
 @keyframes rise { from { transform: translateY(60%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slide { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) {
-  .kinetic h1 span, .ticker div { animation: none; }
+  .kinetic.enter .kinetic-title span, .ticker div { animation: none; }
   .motion-toggle { display: none; }
   .recipe-card { transition: none; }
   .recipe-card:hover, .recipe-card:focus-visible { transform: none; }
@@ -187,8 +215,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
 /* plan */
-.page.wide { max-width: 1240px; }
-.week-nav { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.week-nav { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
 .week-nav strong { min-width: 9.5rem; text-align: center; }
 .planner { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
 .plan-recipes { display: none; }
@@ -229,7 +256,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
   .planner { grid-template-columns: 190px minmax(0, 1fr); align-items: start; }
   .plan-recipes {
     display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: .45rem; padding: .7rem;
-    position: sticky; top: 4rem; max-height: calc(100vh - 5rem);
+    position: sticky; top: 4.5rem; max-height: calc(100vh - 5.5rem);
   }
   .days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .day { grid-template-columns: minmax(0, 1fr); align-content: start; gap: .4rem; min-height: 300px; padding: .55rem; }
@@ -259,8 +286,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .add-item { margin-bottom: 1rem; }
 .grocery { list-style: none; margin: 0; padding: 0; }
 .grocery:empty { display: none; }
-.grocery li { display: flex; align-items: center; border-top: 1px solid var(--line); padding-right: .35rem; }
-.grocery li:first-child { border-top: 0; }
+.grocery { column-gap: 0; column-rule: 1px solid var(--line); }
+@media (min-width: 900px) { .grocery { column-count: 2; } }
+@media (min-width: 1800px) { .grocery { column-count: 3; } }
+@media (min-width: 2500px) { .grocery { column-count: 4; } }
+.grocery li { display: flex; align-items: center; break-inside: avoid; border-top: 1px solid var(--line); padding-right: .35rem; }
+.grocery li:first-child { border-top-color: transparent; } /* keeps rows level across columns */
 .grocery label { flex: 1; min-width: 0; display: flex; align-items: center; gap: .7rem; padding: .7rem; font-weight: 400; font-size: 1rem; cursor: pointer; }
 .item-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .item-amount { color: var(--muted); font-size: .92rem; text-align: right; }
@@ -276,9 +307,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 
 @media (max-width: 640px) {
   h1 { font-size: 1.6rem; }
-  .topbar { flex-wrap: wrap; gap: .25rem .75rem; justify-content: space-between; }
-  .tabs { order: 3; flex-basis: 100%; }
-  .tab { flex: 1; text-align: center; }
+  .tabs { order: -1; flex-basis: 100%; }
+  .page-head > :not(.tabs) { margin-left: auto; }
+  /* the week controls would make the sticky row too tall on a phone */
+  .page-head:has(.week-nav) { position: static; }
+  .week-nav [data-action="clear-checked"] { order: 1; }
+  .tab { flex: 1; justify-content: center; padding-inline: .3rem; }
   .recipe-sheet { --pad: 1rem; }
   /* on a phone the columns stack, so the bracket lies down and points at the method */
   .recipe-sheet .ic-body { grid-template-columns: minmax(0, 1fr); gap: 0; }

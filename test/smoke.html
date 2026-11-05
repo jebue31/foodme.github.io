@@ -335,6 +335,9 @@ async function emptyAccountTests() {
   check("new account sees an empty cookbook", true);
   check("no Tonight line without recipes", !$(".tonight") && !$(".ticker"));
   check("banner still shows", headline() === "What's for dinner?");
+  await load();
+  await until(() => text().includes("Your cookbook is empty"), "reload");
+  check("headline rises on the first page", !!$(".kinetic.enter"));
   await go("#/plan", () => $(".days"));
   check("Plan works with no recipes", text().includes("Add your first recipe"));
   check("headline does not rise again", !$(".kinetic.enter"));

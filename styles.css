@@ -126,7 +126,6 @@ html { scrollbar-gutter: stable; }
 /* recipes */
 .import { padding: .9rem; margin-bottom: 1rem; display: grid; gap: .4rem; }
 .search { margin-bottom: 1rem; }
-.recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; }
 .recipe-tools { justify-content: flex-end; margin-bottom: .75rem; }
 .hero { width: 100%; max-height: 340px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem; }
 
@@ -134,7 +133,7 @@ html { scrollbar-gutter: stable; }
    Everything inside sits on the --rule grid so text stays on the printed lines. */
 .index-card {
   --rule: 1.5rem; --top: .6rem; --pad: .9rem; --paper: #fdf8ec; --blue: #dfe9f1; --head: #e8a79e; --red: #d0584a; --pen: #1a130d;
-  display: block; position: relative; min-width: 0; padding: var(--top) var(--pad) .75rem;
+  display: block; min-width: 0; padding: var(--top) var(--pad) .75rem;
   color: var(--pen); text-decoration: none; font: 1rem/var(--rule) var(--type);
   background: var(--paper) repeating-linear-gradient(to bottom, transparent 0 calc(var(--rule) - 1px), var(--blue) calc(var(--rule) - 1px) var(--rule)) 0 calc(var(--top) - .22rem);
   border-radius: 3px; box-shadow: 0 1px 2px rgb(40 25 10 / .25), 0 6px 14px rgb(40 25 10 / .12);
@@ -144,7 +143,7 @@ html { scrollbar-gutter: stable; }
 .ic-head { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 .75rem; }
 .ic-head::after { content: ""; position: absolute; left: calc(var(--pad) * -1); right: calc(var(--pad) * -1); bottom: .22rem; height: 2px; background: var(--head); }
 .ic-head strong, .ic-head h1 { font: 800 1.05rem/var(--rule) var(--sans); letter-spacing: -.02em; min-width: 0; overflow-wrap: anywhere; }
-.ic-head small { font-size: .85rem; white-space: nowrap; line-height: var(--rule); }
+.ic-head small { font-size: .85rem; white-space: nowrap; }
 .ic-body { display: grid; grid-template-columns: minmax(0, 2fr) 1.4rem minmax(0, 3fr); gap: .5rem; }
 .ic-left, .ic-right { display: block; min-width: 0; overflow-wrap: anywhere; }
 .ic-note { color: #54483e; }
@@ -161,8 +160,8 @@ html { scrollbar-gutter: stable; }
 
 /* the curly bracket, pointing at the method. Drawn from four pieces so the
    curves keep their shape however tall the ingredient list gets. */
-.brace { --r: .7rem; --w: 2px; position: relative; display: grid; grid-template-rows: 1fr 1fr; color: var(--red); margin-block: .2rem .35rem; }
-.brace i { position: relative; display: block; }
+.brace { --r: .7rem; --w: 2px; display: grid; grid-template-rows: 1fr 1fr; color: var(--red); margin-block: .2rem .35rem; }
+.brace i { position: relative; }
 .brace i::before, .brace i::after { content: ""; position: absolute; border: 0 solid currentColor; }
 .brace i::before { left: 0; width: 50%; }
 .brace i::after { left: calc(50% - var(--w)); right: 0; height: var(--r); }
@@ -176,8 +175,8 @@ html { scrollbar-gutter: stable; }
 .recipe-sheet .ic-head h1 { font-size: 1.5rem; }
 .recipe-sheet .ic-head small { font-size: .9rem; }
 .recipe-sheet h2 { font: 800 .85rem/var(--rule) var(--sans); letter-spacing: .08em; text-transform: uppercase; color: #a8392c; }
-.recipe-sheet ul, .recipe-sheet ol { margin: 0; padding: 0; list-style: none; }
-.recipe-sheet ol { padding-left: 1.7rem; list-style: decimal; }
+.recipe-sheet ul { margin: 0; padding: 0; list-style: none; }
+.recipe-sheet ol { margin: 0; padding-left: 1.7rem; }
 .recipe-sheet p { margin: 0; }
 .recipe-sheet a { color: #a8392c; }
 
@@ -186,7 +185,7 @@ html { scrollbar-gutter: stable; }
 .kinetic-title { margin: 0; font: 800 clamp(2rem, 9.5vw, 4rem)/1 var(--sans); letter-spacing: -.045em; }
 .kinetic-brand {
   display: inline-block; margin-left: .15em; padding: 0 .3em; font-size: max(.4em, 1.1rem); line-height: 1.25; letter-spacing: -.02em;
-  color: var(--olive); text-decoration: none; white-space: nowrap; vertical-align: .2em;
+  color: var(--olive); text-decoration: none; vertical-align: .2em;
   border: 2px solid currentColor; border-radius: 3px; transform: rotate(-5deg);
 }
 .kinetic-title span { display: inline-block; }
@@ -198,7 +197,7 @@ html { scrollbar-gutter: stable; }
 .tonight { margin: 0; min-width: 0; font-size: clamp(1.05rem, 3vw, 1.3rem); font-weight: 600; letter-spacing: -.02em; }
 .tonight span { display: inline-block; color: var(--accent); font-weight: 800; }
 .ticker { overflow: hidden; white-space: nowrap; border-block: 2px solid var(--ink); padding: .3rem 0; font-size: 1.2rem; font-weight: 700; }
-.ticker div { display: inline-block; animation: slide 40s linear infinite; }
+.ticker div { display: inline-block; animation: slide linear infinite; }
 .ticker b { color: var(--accent); margin: 0 .7rem; }
 .kinetic.still .ticker div { animation-play-state: paused; }
 .motion-toggle { flex: none; font-size: .82rem; }

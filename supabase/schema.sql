@@ -1,4 +1,4 @@
--- FoodMe database. Paste into Supabase > SQL Editor and run once.
+-- FoodMe database. Paste into Supabase > SQL Editor and run. It is safe to run again.
 -- Row Level Security means each signed-in person can only ever reach their own rows.
 
 create table if not exists public.recipes (
@@ -15,7 +15,7 @@ create table if not exists public.recipes (
   updated_at  timestamptz not null default now()
 );
 
-alter table public.recipes add column if not exists blurb text check (char_length(blurb) <= 160);
+alter table public.recipes add column if not exists blurb text check (char_length(blurb) <= 100);
 
 create table if not exists public.meal_plan (
   id         uuid primary key default gen_random_uuid(),
@@ -110,3 +110,6 @@ end $$;
 
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- Tell the API about any new columns straight away.
+notify pgrst, 'reload schema';

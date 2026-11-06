@@ -145,7 +145,10 @@ async function recipeTests() {
   await go("#/recipes", () => $(".recipe-card"));
   const stew = $$(".recipe-card").find((c) => c.textContent.includes("Test stew"));
   check("a card shows its blurb, escaped", stew.querySelector(".ic-blurb").textContent === "<b>Hearty</b> and warming." && !stew.querySelector(".ic-blurb b"));
-  stew.click();
+  setValue($("#recipe-search"), "hearty");
+  check("search finds words in the blurb", $$(".recipe-card").length === 1);
+  setValue($("#recipe-search"), "");
+  $$(".recipe-card").find((c) => c.textContent.includes("Test stew")).click();
   await until(() => $(".recipe-sheet"), "stew again");
   clickButton("Edit");
   await until(() => $("#recipe-form"), "edit form");
@@ -387,12 +390,14 @@ async function emptyAccountTests() {
 
 async function photoTests() {
   const data = db();
-  data.recipes[0].image_url = "http://localhost:8123/missing-photo.jpg";
+  data.recipes[0].image_url = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   data.recipes[1].image_url = "javascript:alert(1)";
+  data.recipes[2].image_url = "http://localhost:8123/missing-photo.jpg";
   win().localStorage.setItem("fake", JSON.stringify(data));
   await load();
-  await until(() => $(".recipe-card"), "photo reload");
+  await until(() => $$(".recipe-card").length && $$(".recipe-card img").length === 1, "dead photo swapped");
   check("a card shows the recipe photo", $$(".recipe-card img").length === 1);
+  check("a dead photo becomes a drawing", $$(".recipe-card svg.ic-drawing").length === $$(".recipe-card").length - 1);
   $(".recipe-card img").closest("a").click();
   await until(() => $(".recipe-sheet"), "photo recipe");
   check("the recipe page shows the photo", !!$("img.hero"));

@@ -21,18 +21,14 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Branch `feature/menu-cards` is waiting for the owner's review. It needs `supabase/schema.sql`
-run on the real database BEFORE it goes on `main`, or saving recipes will fail: the form
-sends a new `blurb` column. Delete moved to the bottom of the edit screen, and the fixes for
-stray brackets in grocery names and decimal amounts, went live on 2026-11-05. The owner
-should click Rebuild from this week to refresh the saved list.
+Branch `feature/menu-cards` is waiting for the owner's OK. The blurb `alter table` line from
+`supabase/schema.sql` must run on the real database BEFORE the branch goes on `main`, or
+saving recipes will fail. The owner should click Rebuild from this week on the grocery list.
 
-The cleanup passes went live on 2026-11-05. `test/smoke.html` tests every feature on the
-fake backend. Claude tested the live site on real data on 2026-11-05: all pages at desktop,
-tablet and phone sizes in the app's browser, week switching, search, pause, ticking, and
-web import without saving. No console errors. Saving, deleting and rebuilding the list were
-not run on real data. The owner also tested the live site on real data and on a real phone
-or ultrawide. Not tested yet: the reduced-motion setting and password recovery links.
+Tested on real data on 2026-11-05 by Claude and the owner: all pages, phone and desktop sizes,
+week switching, search, pause, ticking, and web import without saving. Saving, deleting and
+rebuilding the list are only tested on the fake backend, as are the features in
+`test/smoke.html`. Not tested yet: the reduced-motion setting and password recovery links.
 
 The restyle is a trial and the owner may hate it. `aa8e5a3` is the latest restyle round and
 `44459ae` the first, but the cleanup commits sit on top of them and touch the same files,

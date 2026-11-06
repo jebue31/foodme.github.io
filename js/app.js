@@ -352,7 +352,7 @@ function showRecipeMatches() {
   if (!grid) return;
   const q = state.query.trim().toLowerCase();
   const found = !q ? state.recipes : state.recipes.filter((r) =>
-    r.title.toLowerCase().includes(q) || r.ingredients.some((i) => i.toLowerCase().includes(q)));
+    r.title.toLowerCase().includes(q) || r.blurb?.toLowerCase().includes(q) || r.ingredients.some((i) => i.toLowerCase().includes(q)));
   grid.innerHTML = found.length ? h`${recipeCards(found)}`.s : h`<p class="muted">No recipes match “${state.query}”.</p>`.s;
 }
 
@@ -429,7 +429,7 @@ async function recipeForm(id) {
         <label>Minutes <input name="minutes" type="number" min="0" inputmode="numeric" value="${r.minutes ?? ""}"></label>
       </div>
       <label>Menu blurb <span class="hint">a line or two for the recipe card</span>
-        <textarea name="blurb" rows="2" maxlength="160">${r.blurb ?? ""}</textarea>
+        <textarea name="blurb" rows="2" maxlength="100">${r.blurb ?? ""}</textarea>
       </label>
       <label>Ingredients <span class="hint">one per line, like “2 cups flour”</span>
         <textarea name="ingredients" rows="10">${(r.ingredients ?? []).join("\n")}</textarea>
@@ -901,6 +901,11 @@ const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
   refreshTonight();
   render();
 });
+
+// A photo that no longer loads becomes the drawing. Load errors don't bubble, so this listens on the way down.
+document.addEventListener("error", (e) => {
+  if (e.target.matches?.("img.ic-picture")) e.target.outerHTML = cardDrawing(e.target.closest(".recipe-card").querySelector("strong").textContent).s;
+}, true);
 
 document.addEventListener("dragstart", (e) => {
   const el = e.target.closest?.("[data-drag-recipe], [data-meal]");

@@ -3,6 +3,20 @@
 The owner's ideas, in order. This repo is public, so no personal details here.
 Current status lives in `session-state.md`.
 
+## Small fixes, from the 2026-11-05 code review
+Confirmed by running them:
+- Grocery list drops lines like "2 cups peeled, diced potatoes" (the name comes out empty).
+- Grocery names break on "1 small or medium onion" and "1 cup medium-grain rice".
+Found by reading the code, not reproduced yet:
+- A double tap in the meal picker, or a double submit of the add-item form, adds duplicates.
+- One ingredient line over 200 characters stops the whole grocery list from building.
+- Tapping inside the picker's edge closes it as if the backdrop was hit.
+- Web import: `localhost.` with a trailing dot gets past the address check.
+- Web import: pages not in UTF-8 lose characters, such as ½ in amounts.
+- A brief network failure on load leaves a wrong Tonight line until the next change or reload.
+- Dead card photos are fetched again on every search keystroke.
+- Web import could fill in the blurb from the page's description (needs a function redeploy).
+
 ## Next steps, in order
 1. Recipes page cards: built on `feature/menu-cards`. Lined card, no bracket, a photo or an
    olive line drawing on the left, and a black menu blurb on the right. Later: let people

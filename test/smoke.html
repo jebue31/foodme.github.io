@@ -145,6 +145,8 @@ async function recipeTests() {
   await go("#/recipes", () => $(".recipe-card"));
   const stew = $$(".recipe-card").find((c) => c.textContent.includes("Test stew"));
   check("a card shows its blurb, escaped", stew.querySelector(".ic-blurb").textContent === "<b>Hearty</b> and warming." && !stew.querySelector(".ic-blurb b"));
+  setValue($("#recipe-search"), "soften the onion");
+  check("search finds the first step shown on a card", $$(".recipe-card").length === 1);
   setValue($("#recipe-search"), "hearty");
   check("search finds words in the blurb", $$(".recipe-card").length === 1);
   setValue($("#recipe-search"), "");

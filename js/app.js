@@ -203,11 +203,13 @@ const BRACE = h`<span class="brace" aria-hidden="true"><span></span><span></span
 const cardDrawing = (title) =>
   new Safe(`<svg class="ic-picture ic-drawing" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
 
+const cardBlurb = (r) => r.blurb || r.steps.trim().split("\n")[0]; // recipes with no blurb show their first step
+
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
     const image = safeHttpUrl(r.image_url);
-    const blurb = r.blurb || r.steps.split("\n")[0]; // recipes saved before blurbs existed show their first step
+    const blurb = cardBlurb(r);
     return h`
       <a class="recipe-card index-card" href="#/recipes/${r.id}">
         <span class="ic-head"><strong>${r.title}</strong>${meta ? h`<small>${meta}</small>` : ""}</span>
@@ -352,7 +354,7 @@ function showRecipeMatches() {
   if (!grid) return;
   const q = state.query.trim().toLowerCase();
   const found = !q ? state.recipes : state.recipes.filter((r) =>
-    r.title.toLowerCase().includes(q) || r.blurb?.toLowerCase().includes(q) || r.ingredients.some((i) => i.toLowerCase().includes(q)));
+    r.title.toLowerCase().includes(q) || cardBlurb(r).toLowerCase().includes(q) || r.ingredients.some((i) => i.toLowerCase().includes(q)));
   grid.innerHTML = found.length ? h`${recipeCards(found)}`.s : h`<p class="muted">No recipes match “${state.query}”.</p>`.s;
 }
 

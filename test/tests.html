@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8"><title>FoodMe parser tests</title><pre id="out"></pre>
 <script type="module">
 import { parseIngredient as p, buildGroceryLines as b, formatQty } from "../js/ingredients.js";
-import { extractRecipe, isoMinutes, safeUrl, clean } from "../supabase/functions/import-recipe/index.ts";
+import { extractRecipe, isoMinutes, safeUrl, clean, shortBlurb, decodePage } from "../supabase/functions/import-recipe/index.ts";
 import { drawingFor } from "../js/drawings.js";
 
 const results = [];
@@ -68,7 +68,7 @@ eq("sorted", b(["1 pear", "1 apple"]).map((i) => i.name), ["Apple", "Pear"]);
 const page = (o) => `<html><script type="application/ld+json">${JSON.stringify(o)}<\/script></html>`;
 eq("basic", extractRecipe(page({ "@type": "Recipe", name: "Soup &amp; Bread", recipeYield: "4 servings", totalTime: "PT1H30M",
   recipeIngredient: ["1 cup <b>stock</b>"], recipeInstructions: [{ "@type": "HowToStep", text: "Boil." }, "Eat."], image: { url: "https://x.co/a.jpg" } })),
-  { title: "Soup & Bread", servings: 4, minutes: 90, ingredients: ["1 cup stock"], steps: "Boil.\nEat.", image_url: "https://x.co/a.jpg" });
+  { title: "Soup & Bread", blurb: "", servings: 4, minutes: 90, ingredients: ["1 cup stock"], steps: "Boil.\nEat.", image_url: "https://x.co/a.jpg" });
 eq("@graph + type array", extractRecipe(page({ "@graph": [{ "@type": "WebPage" }, { "@type": ["Thing", "Recipe"], name: "G", recipeYield: ["6"], recipeInstructions: "One\nTwo" }] })).steps, "One\nTwo");
 eq("sections", extractRecipe(page({ "@type": "Recipe", name: "S", recipeInstructions: [{ "@type": "HowToSection", name: "A", itemListElement: [{ text: "x" }, { text: "y" }] }] })).steps, "x\ny");
 eq("prep+cook", extractRecipe(page({ "@type": "Recipe", name: "S", prepTime: "PT10M", cookTime: "PT5M" })).minutes, 15);
@@ -81,6 +81,36 @@ eq("clean tags", clean("a &lt;b&gt;c&lt;/b&gt; d"), "a c d");
 // address safety
 eq("ok url", safeUrl("https://www.example.com/a").hostname, "www.example.com");
 for (const bad of ["ftp://x.com/a", "http://localhost/", "http://127.0.0.1/", "http://2130706433/", "http://[::1]/", "http://169.254.169.254/", "http://a.internal/", "https://x.com:8443/", "https://u:p@x.com/", "http://0x7f.0.0.1/", "nonsense"]) throws("blocked " + bad, () => safeUrl(bad));
+
+// lines that used to vanish or come out garbled
+eq("prep word before a comma", p("2 cups peeled, diced potatoes"), { qty: 2, unit: "cup", name: "potatoes" });
+eq("second prep word kept out", p("1 cup chopped, toasted walnuts"), { qty: 1, unit: "cup", name: "toasted walnuts" });
+eq("size word before a comma", p("2 large, ripe tomatoes"), { qty: 2, unit: null, name: "ripe tomatoes" });
+eq("small or medium", p("1 small or medium onion"), { qty: 1, unit: null, name: "onion" });
+eq("peeled and diced", p("2 cups peeled and diced potatoes"), { qty: 2, unit: "cup", name: "potatoes" });
+eq("hyphen keeps its word", p("1 cup medium-grain rice"), { qty: 1, unit: "cup", name: "medium-grain rice" });
+eq("small-curd stays", p("2 cups small-curd cottage cheese"), { qty: 2, unit: "cup", name: "small-curd cottage cheese" });
+eq("extra-large stays", p("2 extra-large eggs"), { qty: 2, unit: null, name: "extra-large eggs" });
+eq("prep inside still goes", p("2 cloves finely minced garlic"), { qty: 2, unit: "clove", name: "garlic" });
+eq("comma notes still go", p("1 onion, finely chopped"), { qty: 1, unit: null, name: "onion" });
+eq("a prep word alone is nothing", p("1 cup chopped"), null);
+eq("long names fit the database", b(["x".repeat(300)])[0].name.length, 200);
+
+// imported blurbs
+eq("short description kept", shortBlurb("A quick soup."), "A quick soup.");
+eq("no description", shortBlurb(undefined), "");
+eq("first sentence when it fits", shortBlurb(`Rich and warming. ${"More words here. ".repeat(10)}`), "Rich and warming.");
+const longBlurb = shortBlurb("word ".repeat(40));
+eq("long description fits", longBlurb.length <= 100 && longBlurb.endsWith("word…"), true);
+eq("import reads the description", extractRecipe(page({ "@type": "Recipe", name: "S", description: "Tasty." })).blurb, "Tasty.");
+
+// page text encodings
+const latin = new Uint8Array([0xbd, 0x20, 0x63, 0x75, 0x70]); // "½ cup" in windows-1252
+eq("charset from the header", decodePage(latin, "text/html; charset=windows-1252"), "½ cup");
+eq("charset from the page", decodePage(new Uint8Array([...new TextEncoder().encode('<meta charset="iso-8859-1">'), 0xbd]), ""), '<meta charset="iso-8859-1">½');
+eq("utf-8 by default", decodePage(new TextEncoder().encode("½ cup"), ""), "½ cup");
+eq("unknown charset falls back", decodePage(new TextEncoder().encode("cup"), "text/html; charset=nonsense"), "cup");
+for (const bad of ["http://localhost./", "http://metadata.internal./"]) throws("blocked " + bad, () => safeUrl(bad));
 
 // recipe drawings: the dish wins over the main ingredient
 const same = (label, title, like) => eq(label, drawingFor(title), drawingFor(like));

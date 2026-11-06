@@ -38,7 +38,11 @@ const METRIC = new Set(["ml", "l", "g", "kg"]);
 
 // Preparation words, dropped so "minced garlic" and "garlic" land on one line.
 // Purchase descriptors ("boneless", "crushed tomatoes") are kept on purpose.
-const PREP = /\b(finely|coarsely|roughly|thinly|freshly|chopped|diced|minced|sliced|peeled|large|medium|small)\b/gi;
+const PREP_WORDS = "finely|coarsely|roughly|thinly|freshly|chopped|diced|minced|sliced|peeled|large|medium|small";
+const PREP = new RegExp(String.raw`(^|\s)(?:${PREP_WORDS})(?=\s|$)`, "gi"); // whole words, so "medium-grain rice" stays
+// Runs before the comma split, so "peeled, diced potatoes" keeps its potatoes.
+const LEADING_PREP = new RegExp(String.raw`^(?:(?:${PREP_WORDS}|and|or)(?:,\s*|\s+))+`, "i");
+const MAX_NAME = 200; // the database's limit on grocery item names
 const TRAILING = /\b(to taste|to serve|as needed|optional|for (garnish|serving|greasing|frying|the pan|dusting)|plus|or (more|to taste)|divided)\b.*$/i;
 
 const NUM = String.raw`\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?`;
@@ -107,12 +111,13 @@ export function parseIngredient(line) {
   const name = s.replace(/^of\s+/i, "")
     .replace(/[*†‡]/g, "")
     .replace(/\b(boneless|skinless|skin-on|bone-in),\s*/gi, "$1 ") // "boneless, skinless chicken" is one thing
+    .replace(LEADING_PREP, "")
     .split(",")[0]
     .replace(TRAILING, "")
     .replace(PREP, " ")
     .replace(/\s+/g, " ")
-    .replace(/^(and|or|of)\s+|\s+(and|or)$/gi, "")
-    .trim();
+    .trim()
+    .replace(/^(and|or|of)\s+|\s+(and|or)$/gi, "");
   return name ? { qty, unit, name } : null;
 }
 
@@ -187,6 +192,6 @@ export function buildGroceryLines(lines) {
     for (const [unit, qty] of item.counts) parts.push(unit ? formatOther(qty, unit) : formatQty(qty));
     if (item.weight) parts.push(formatWeight(item.weight, item.metricW));
     if (item.volume) parts.push(formatVolume(item.volume, item.metricV));
-    return { name: item.name[0].toUpperCase() + item.name.slice(1), amount: parts.join(" + ") };
+    return { name: (item.name[0].toUpperCase() + item.name.slice(1)).slice(0, MAX_NAME), amount: parts.join(" + ") };
   }).sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -94,6 +94,15 @@ function parseServings(v) {
   return n > 0 ? n : null;
 }
 
+// The recipe card has room for 100 characters: the first sentence if it fits, otherwise a trimmed start.
+export function shortBlurb(v) {
+  const text = clean(v);
+  if (text.length <= 100) return text;
+  const sentence = /^.+?[.!?](?=\s)/.exec(text)?.[0];
+  if (sentence && sentence.length <= 100) return sentence;
+  return `${text.slice(0, 99).replace(/\s+\S*$/, "")}…`;
+}
+
 export function extractRecipe(html) {
   const scripts = html.matchAll(/<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi);
   for (const [, body] of scripts) {
@@ -110,6 +119,7 @@ export function extractRecipe(html) {
     if (!title) continue;
     return {
       title,
+      blurb: shortBlurb(r.description),
       servings: parseServings(r.recipeYield),
       minutes: isoMinutes(r.totalTime) ??
         (((isoMinutes(r.prepTime) ?? 0) + (isoMinutes(r.cookTime) ?? 0)) || null),
@@ -132,13 +142,25 @@ export function safeUrl(input, base) {
   } catch {
     throw new UserError("That doesn't look like a web address.");
   }
-  const host = url.hostname.toLowerCase();
+  const host = url.hostname.toLowerCase().replace(/\.+$/, ""); // "localhost." is still localhost
   const blocked = !/^https?:$/.test(url.protocol) || url.username || url.password ||
     (url.port && !["80", "443"].includes(url.port)) ||
     host.startsWith("[") || /^\d+\.\d+\.\d+\.\d+$/.test(host) || !host.includes(".") ||
     /\.(local|localhost|internal|intranet|lan|home|corp)$/.test(host);
   if (blocked) throw new UserError("That address can't be imported.");
   return url;
+}
+
+// Uses the charset the site declares, in its header or its page head. Most pages are UTF-8.
+export function decodePage(bytes, contentType = "") {
+  const head = new TextDecoder("latin1").decode(bytes.subarray(0, 2048));
+  const declared = /charset=["']?([\w-]+)/i.exec(contentType)?.[1] ??
+    /<meta[^>]+charset=["']?([\w-]+)/i.exec(head)?.[1] ?? "utf-8";
+  try {
+    return new TextDecoder(declared).decode(bytes);
+  } catch {
+    return new TextDecoder().decode(bytes); // a label the decoder doesn't know
+  }
 }
 
 async function readLimited(res) {
@@ -162,7 +184,7 @@ async function readLimited(res) {
     all.set(c, at);
     at += c.length;
   }
-  return new TextDecoder().decode(all);
+  return decodePage(all, res.headers.get("content-type") ?? "");
 }
 
 async function fetchPage(input) {

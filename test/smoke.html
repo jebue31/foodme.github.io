@@ -176,6 +176,7 @@ async function recipeTests() {
   await until(() => $("#recipe-form"), "import form");
   check("import fills the form", $("#recipe-form").elements.ingredients.value.includes("lentils"));
   check("imported text stays escaped", !$("#recipe-form b") && text().includes("Check the import"));
+  check("import fills the blurb", $("#recipe-form").elements.blurb.value === "A quick lentil soup.");
   check("a new recipe has no delete button", !button("Delete recipe"));
   await go("#/recipes/nope", () => text().includes("Recipe not found"));
   check("missing recipe message", true);
@@ -225,14 +226,24 @@ async function planTests() {
   const before = db().meal_plan.length;
   $(".add").click();
   check("picker opens", $("#picker").open);
+  const clickDialog = (x, y) => $("#picker").dispatchEvent(new (win().MouseEvent)("click", { bubbles: true, clientX: x, clientY: y }));
+  const edge = $("#picker").getBoundingClientRect();
+  clickDialog(edge.left + 4, edge.top + 4);
+  check("a click on the picker's edge keeps it open", $("#picker").open);
+  clickDialog(edge.left - 4, edge.top - 4);
+  check("a click on the backdrop closes the picker", !$("#picker").open);
+  $(".add").click();
   setValue($("#picker-search"), "zzzz");
   check("picker search with no match", text().includes("No recipes match"));
   setValue($("#picker-search"), "salad");
   $("[name=picker-slot][value=lunch]").checked = true;
-  $("#picker-list button").click();
-  await until(() => db().meal_plan.length === before + 1 && !$("#picker")?.open && $(".meal small"), "meal added");
+  const pickedRecipe = $("#picker-list button");
+  pickedRecipe.click();
+  pickedRecipe.click();
+  await until(() => db().meal_plan.length >= before + 1 && !$("#picker")?.open && $(".meal small"), "meal added");
   await sleep(60);
   check("picker adds to the chosen slot", db().meal_plan.some((m) => m.slot === "lunch"));
+  check("a double tap adds one meal", db().meal_plan.length === before + 1);
 
   setValue($("#plan-search"), "lentil");
   check("side list search", $$(".plan-recipe").length === 1);
@@ -287,9 +298,12 @@ async function groceryTests() {
   const built = $$(".grocery li").length;
 
   fill($("#item-form"), { name: "Paper towels" });
-  submit($("#item-form"));
+  const addButton = $("#item-form [type=submit]");
+  addButton.click();
+  addButton.click();
   await until(() => text().includes("Paper towels"), "added item");
-  check("add an item by hand", $$(".grocery li").length === built + 1);
+  await sleep(60);
+  check("add an item by hand, once on a double tap", $$(".grocery li").length === built + 1);
 
   const box = $(".grocery input[type=checkbox]");
   box.click();
@@ -403,6 +417,24 @@ async function photoTests() {
   $(".recipe-card img").closest("a").click();
   await until(() => $(".recipe-sheet"), "photo recipe");
   check("the recipe page shows the photo", !!$("img.hero"));
+
+  const planned = db();
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const dinner = { id: "tonight-test", user_id: planned.recipes[0].user_id, day: todayKey, slot: "dinner", recipe_id: planned.recipes[0].id };
+  win().localStorage.setItem("fake", JSON.stringify({ ...planned, meal_plan: [...planned.meal_plan, dinner] }));
+  win().fakeMissing = "meal_plan";
+  await go(`#/recipes/${planned.recipes[0].id}/edit`, () => $("#recipe-form"));
+  submit($("#recipe-form"));
+  await until(() => $(".recipe-sheet"), "saved while the plan fails");
+  check("a failed plan read falls back to a suggestion", $(".tonight").textContent.includes("Tonight, maybe:"));
+  win().fakeMissing = null;
+  await go("#/recipes", () => $(".recipe-card"));
+  await until(() => /Tonight:/.test($(".tonight").textContent), "tonight recovers");
+  check("tonight recovers on the next page", true);
+  const unplanned = db();
+  unplanned.meal_plan = unplanned.meal_plan.filter((m) => m.id !== "tonight-test");
+  win().localStorage.setItem("fake", JSON.stringify(unplanned));
   const clean = db();
   clean.recipes[0].image_url = null;
   clean.recipes[1].image_url = null;

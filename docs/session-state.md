@@ -21,9 +21,11 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Branch `feature/menu-cards` is waiting for the owner's OK. The blurb `alter table` line from
-`supabase/schema.sql` must run on the real database BEFORE the branch goes on `main`, or
-saving recipes will fail. The owner should click Rebuild from this week on the grocery list.
+Branch `fix/review-findings` sits on top of `feature/menu-cards` and holds the cards plus all
+the code review fixes. It is waiting for the owner's OK to go on `main`. The owner ran the
+blurb SQL on the real database on 2026-11-06. Two fixes and the imported blurbs only apply
+once `import-recipe` is redeployed from the editor; nothing breaks before that. The owner
+should click Rebuild from this week on the grocery list.
 
 Tested on real data on 2026-11-05 by Claude and the owner: all pages, phone and desktop sizes,
 week switching, search, pause, ticking, and web import without saving. Saving, deleting and

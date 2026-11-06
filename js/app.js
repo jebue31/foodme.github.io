@@ -203,12 +203,14 @@ const BRACE = h`<span class="brace" aria-hidden="true"><span></span><span></span
 const cardDrawing = (title) =>
   new Safe(`<svg class="ic-picture ic-drawing" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
 
+const deadPhotos = new Set(); // so searching doesn't ask for them again on every keystroke
 const cardBlurb = (r) => r.blurb || r.steps.trim().split("\n")[0]; // recipes with no blurb show their first step
 
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
-    const image = safeHttpUrl(r.image_url);
+    const photo = safeHttpUrl(r.image_url);
+    const image = deadPhotos.has(photo) ? null : photo;
     const blurb = cardBlurb(r);
     return h`
       <a class="recipe-card index-card" href="#/recipes/${r.id}">
@@ -248,14 +250,16 @@ const motionLabel = () => (motionPaused ? "Play motion" : "Pause motion");
 
 // The planned dinner when there is one, otherwise a rotating suggestion from the cookbook.
 async function tonightChoices(today) {
+  let failed = !state.recipes;
   try {
     const meals = await api.listMeals(today, today);
     const dinners = meals.filter((m) => m.slot === "dinner").map((m) => recipeById(m.recipe_id)?.title).filter(Boolean);
     if (dinners.length) return { label: "Tonight:", names: dinners };
   } catch (err) {
     console.error(err); // a decoration shouldn't take the page down
+    failed = true;
   }
-  return { label: "Tonight, maybe:", names: (state.recipes ?? []).map((r) => r.title) };
+  return { label: "Tonight, maybe:", names: (state.recipes ?? []).map((r) => r.title), failed };
 }
 
 // Only asks the database when the plan or recipes changed, or the day rolled over.
@@ -268,7 +272,7 @@ async function ensureBanner() {
     console.error(err);
   }
   state.tonight = await tonightChoices(today);
-  tonightFor = today;
+  if (!state.tonight.failed) tonightFor = today; // after a failed read, try again on the next page
 }
 
 function swing(el, duration = 500) {
@@ -816,7 +820,7 @@ const actions = {
   choose: async (el) => {
     const dialog = document.getElementById("picker");
     const slot = dialog.querySelector("[name=picker-slot]:checked").value;
-    await api.addMeal({ day: dialog.dataset.day, slot, recipe_id: el.dataset.id });
+    await busy(el, () => api.addMeal({ day: dialog.dataset.day, slot, recipe_id: el.dataset.id }));
     dialog.close();
     refreshTonight();
     render();
@@ -856,7 +860,7 @@ const forms = {
   "password-form": submitPassword,
   "delete-form": submitDelete,
   "item-form": async (form) => {
-    await api.addGrocery([{ name: form.name.value.trim() }]);
+    await busy(form.querySelector("[type=submit]"), () => api.addGrocery([{ name: form.name.value.trim() }]));
     render();
   },
 };
@@ -864,8 +868,11 @@ const forms = {
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (el && el.dataset.action !== "tick") guarded(actions[el.dataset.action])(el);
-  // Backdrop click closes the picker.
-  if (e.target.id === "picker") e.target.close();
+  // A click on the backdrop closes the picker. Clicks on its padding also land on the dialog, so check the position.
+  if (e.target.id === "picker") {
+    const { left, right, top, bottom } = e.target.getBoundingClientRect();
+    if (e.clientX < left || e.clientX > right || e.clientY < top || e.clientY > bottom) e.target.close();
+  }
 });
 document.addEventListener("change", (e) => {
   if (e.target.dataset?.action === "tick") guarded(actions.tick)(e.target);
@@ -906,7 +913,9 @@ const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
 
 // A photo that no longer loads becomes the drawing. Load errors don't bubble, so this listens on the way down.
 document.addEventListener("error", (e) => {
-  if (e.target.matches?.("img.ic-picture")) e.target.outerHTML = cardDrawing(e.target.closest(".recipe-card").querySelector("strong").textContent).s;
+  if (!e.target.matches?.("img.ic-picture")) return;
+  deadPhotos.add(e.target.getAttribute("src"));
+  e.target.outerHTML = cardDrawing(e.target.closest(".recipe-card").querySelector("strong").textContent).s;
 }, true);
 
 document.addEventListener("dragstart", (e) => {

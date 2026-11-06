@@ -162,7 +162,7 @@
             return { data: null, error: { context } };
           }
           return { data: {
-            title: "Imported <b>Soup</b>", servings: 4, minutes: 35,
+            title: "Imported <b>Soup</b>", blurb: "A quick lentil soup.", servings: 4, minutes: 35,
             ingredients: ["2 carrots", "1 cup lentils"], steps: "Chop.\nSimmer.",
             image_url: null, source_url: body.url,
           }, error: null };

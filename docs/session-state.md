@@ -21,10 +21,10 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Nothing being built. The recipe cards and code review fixes went live on 2026-11-06, and the
-owner ran the blurb SQL. Owner to do: save one blurb on the live site to confirm the column,
-click Rebuild from this week on the grocery list, and redeploy `import-recipe` from the
-editor. Two import fixes and imported blurbs only apply after that; nothing breaks before.
+Nothing being built. The recipe cards, code review fixes and redeployed `import-recipe` went
+live on 2026-11-06 and passed checks on real data, including saving a blurb and importing.
+Deleting a recipe also removes it from the plan, so re-importing Chicken Tenders and Mac and
+Cheese took them off it. The owner can re-add those meals, then Rebuild the grocery list.
 
 Tested on real data on 2026-11-05 by Claude and the owner: all pages, phone and desktop sizes,
 week switching, search, pause, ticking, and web import without saving. Saving, deleting and

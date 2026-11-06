@@ -4,9 +4,9 @@ The owner's ideas, in order. This repo is public, so no personal details here.
 Current status lives in `session-state.md`.
 
 ## Next steps, in order
-1. Recipes page cards: keep the lined card but drop the curly bracket. Show a picture and
-   a short restaurant-menu style blurb instead of recipe text. The full recipe card stays.
-   Needs a place to store the blurb (database change) and a plan for recipes with no photo.
+1. Recipes page cards: built on `feature/menu-cards`. Lined card, no bracket, a photo or an
+   olive line drawing on the left, and a black menu blurb on the right. Later: let people
+   pick a different drawing when the title match gets it wrong.
 2. Grocery stars: a star beside ingredients needed for the next planned meal, marking
    them as important.
 3. Friends, with invite links (needs a small server function; sign-ups stay closed).

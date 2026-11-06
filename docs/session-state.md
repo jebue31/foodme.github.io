@@ -21,9 +21,11 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Nothing. Delete moved to the bottom of the edit screen, and the fixes for stray brackets in
-grocery names and decimal amounts, went live on 2026-11-05. The owner should click Rebuild
-from this week to refresh the saved list.
+Branch `feature/menu-cards` is waiting for the owner's review. It needs `supabase/schema.sql`
+run on the real database BEFORE it goes on `main`, or saving recipes will fail: the form
+sends a new `blurb` column. Delete moved to the bottom of the edit screen, and the fixes for
+stray brackets in grocery names and decimal amounts, went live on 2026-11-05. The owner
+should click Rebuild from this week to refresh the saved list.
 
 The cleanup passes went live on 2026-11-05. `test/smoke.html` tests every feature on the
 fake backend. Claude tested the live site on real data on 2026-11-05: all pages at desktop,
@@ -50,6 +52,9 @@ shopping. Don't commit the photos: this repo is public.
 - Installable web app rather than a store app, because it is free.
 - Family members see each other's recipes automatically. Friends see only what is shared.
 - Two-way calendar sync ruled out: too much work for a small benefit.
+- Recipe card drawings are hand-drawn line art in `js/drawings.js`, picked from title words,
+  not AI images or stock photos: free, one consistent style, and they never pose as the dish.
+  A card with no blurb shows the recipe's first step.
 - Diet tags are estimates ("appears gluten free"), never allergy guarantees.
 - Tonight's dinner is only re-read when the plan or recipes change, or the day rolls over,
   so a change made on another device shows after a reload.

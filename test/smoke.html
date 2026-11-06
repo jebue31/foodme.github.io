@@ -127,8 +127,8 @@ async function recipeTests() {
   check("clearing search restores cards", $$(".recipe-card").length === 5);
 
   const soup = $$(".recipe-card").find((c) => c.textContent.includes("Tomato soup"));
-  check("long ingredient list shows + more", soup.textContent.includes("+ 4 more"));
-  check("card has a bracket", !!soup.querySelector(".brace"));
+  check("card has a drawing and no bracket", !!soup.querySelector("svg.ic-drawing") && !soup.querySelector(".brace"));
+  check("a card with no blurb shows the first step", soup.querySelector(".ic-blurb").textContent.startsWith("Soften the onion"));
   soup.click();
   await until(() => $(".recipe-sheet"), "recipe page");
   check("full recipe shows all ingredients", $$(".recipe-sheet ul li").length === 8);
@@ -137,11 +137,16 @@ async function recipeTests() {
   check("original link is safe", $(".recipe-sheet a").rel.includes("noopener"));
 
   await go("#/recipes/new", () => $("#recipe-form"));
-  fill($("#recipe-form"), { title: `<img src=x onerror=alert(1)> Test stew`, servings: "2", minutes: "30", ingredients: "1 cup beans\n2 carrots", steps: "Chop.\nSimmer." });
+  fill($("#recipe-form"), { title: `<img src=x onerror=alert(1)> Test stew`, blurb: "<b>Hearty</b> and warming.", servings: "2", minutes: "30", ingredients: "1 cup beans\n2 carrots", steps: "Chop.\nSimmer." });
   submit($("#recipe-form"));
   await until(() => $(".recipe-sheet"), "saved recipe");
   check("new recipe saves", text().includes("Test stew"));
   check("titles are escaped", !$(".recipe-sheet img") && !$(".ticker img"));
+  await go("#/recipes", () => $(".recipe-card"));
+  const stew = $$(".recipe-card").find((c) => c.textContent.includes("Test stew"));
+  check("a card shows its blurb, escaped", stew.querySelector(".ic-blurb").textContent === "<b>Hearty</b> and warming." && !stew.querySelector(".ic-blurb b"));
+  stew.click();
+  await until(() => $(".recipe-sheet"), "stew again");
   clickButton("Edit");
   await until(() => $("#recipe-form"), "edit form");
   check("edit form is filled in", $("#recipe-form").elements.ingredients.value.includes("carrots"));

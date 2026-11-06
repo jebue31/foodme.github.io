@@ -2,6 +2,7 @@
 <script type="module">
 import { parseIngredient as p, buildGroceryLines as b, formatQty } from "../js/ingredients.js";
 import { extractRecipe, isoMinutes, safeUrl, clean } from "../supabase/functions/import-recipe/index.ts";
+import { drawingFor } from "../js/drawings.js";
 
 const results = [];
 const eq = (label, got, want) => {
@@ -80,6 +81,19 @@ eq("clean tags", clean("a &lt;b&gt;c&lt;/b&gt; d"), "a c d");
 // address safety
 eq("ok url", safeUrl("https://www.example.com/a").hostname, "www.example.com");
 for (const bad of ["ftp://x.com/a", "http://localhost/", "http://127.0.0.1/", "http://2130706433/", "http://[::1]/", "http://169.254.169.254/", "http://a.internal/", "https://x.com:8443/", "https://u:p@x.com/", "http://0x7f.0.0.1/", "nonsense"]) throws("blocked " + bad, () => safeUrl(bad));
+
+// recipe drawings: the dish wins over the main ingredient
+const same = (label, title, like) => eq(label, drawingFor(title), drawingFor(like));
+const plate = drawingFor("Grandma's mystery dish");
+eq("no match gets the plate", plate.includes('r="17"'), true);
+for (const title of ["Blueberry muffins", "Spaghetti and meat sauce", "Birthday cake", "Chicken Tenders", "Pancakes", "Eggs benedict"]) eq("drawn: " + title, drawingFor(title) !== plate, true);
+same("soup beats chicken", "Chicken noodle soup", "Tomato soup");
+same("pie beats chicken", "Chicken pot pie", "Apple pie");
+same("tacos beat fish", "Fish tacos", "Beef tacos");
+same("pancake is not cake", "Banana pancakes", "Waffles");
+same("salad beats chicken", "Chicken salad", "Green salad");
+eq("eggplant is not an egg", drawingFor("Eggplant"), plate);
+eq("pineapple is not a pie", drawingFor("Pineapple"), plate);
 
 const failed = results.filter((r) => !r.ok);
 document.title = failed.length ? `FAIL ${failed.length}` : "PASS";

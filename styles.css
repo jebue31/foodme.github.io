@@ -170,13 +170,13 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .ic-left, .ic-right { display: block; min-width: 0; overflow-wrap: anywhere; }
 .ic-note { color: #54483e; }
 
-/* in the list: a fixed window of five lines */
+/* in the list: a picture and a menu blurb, in a fixed window of four lines */
 .recipe-card { font-size: .95rem; transition: transform .15s ease; }
 .recipe-card:hover, .recipe-card:focus-visible { transform: rotate(-.6deg) translateY(-2px); }
-.recipe-card .ic-body { height: calc(var(--rule) * 5); grid-template-columns: minmax(0, 1fr) 1.2rem minmax(0, 1fr); }
-.recipe-card .ic-left, .recipe-card .ic-right { height: 100%; overflow: hidden; }
-.recipe-card .ic-left span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.recipe-card .ic-right img { float: right; width: 3.5rem; height: calc(var(--rule) * 3); margin: var(--lift) 0 0 .5rem; object-fit: cover; }
+.recipe-card .ic-body { height: calc(var(--rule) * 4); grid-template-columns: calc(var(--rule) * 4) minmax(0, 1fr); gap: .75rem; }
+.ic-picture { display: block; width: 100%; height: calc(var(--rule) * 4); object-fit: cover; }
+.ic-drawing { fill: none; stroke: #5d6b34; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic-blurb { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; }
 
 /* the full recipe: the same card, as long as it needs to be */
 .recipe-sheet { --rule: 1.85rem; --pad: 1.4rem; font-size: 1.1rem; padding-bottom: 1.25rem; }

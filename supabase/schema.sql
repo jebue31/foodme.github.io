@@ -15,6 +15,8 @@ create table if not exists public.recipes (
   updated_at  timestamptz not null default now()
 );
 
+alter table public.recipes add column if not exists blurb text check (char_length(blurb) <= 160);
+
 create table if not exists public.meal_plan (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,

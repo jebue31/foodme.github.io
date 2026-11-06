@@ -1,5 +1,6 @@
 import * as api from "./api.js";
 import { buildGroceryLines, ingredientKey } from "./ingredients.js";
+import { drawingFor } from "./drawings.js";
 
 /* ---------- safe HTML templating: every ${value} is escaped unless it came from h`` ---------- */
 
@@ -199,27 +200,20 @@ async function submitAuth(form) {
 /* ---------- recipes ---------- */
 
 const BRACE = h`<span class="brace" aria-hidden="true"><span></span><span></span></span>`;
-const CARD_INGREDIENTS = 5;
+const cardDrawing = (title) =>
+  new Safe(`<svg class="ic-picture ic-drawing" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
 
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
     const image = safeHttpUrl(r.image_url);
-    const crowded = r.ingredients.length > CARD_INGREDIENTS;
-    const shown = r.ingredients.slice(0, crowded ? CARD_INGREDIENTS - 1 : CARD_INGREDIENTS);
+    const blurb = r.blurb || r.steps.split("\n")[0]; // recipes saved before blurbs existed show their first step
     return h`
       <a class="recipe-card index-card" href="#/recipes/${r.id}">
         <span class="ic-head"><strong>${r.title}</strong>${meta ? h`<small>${meta}</small>` : ""}</span>
         <span class="ic-body">
-          <span class="ic-left">
-            ${shown.map((i) => h`<span>${i}</span>`)}
-            ${crowded ? h`<span class="ic-note">+ ${r.ingredients.length - shown.length} more</span>` : ""}
-          </span>
-          ${BRACE}
-          <span class="ic-right">
-            ${image ? h`<img src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
-            ${r.steps || h`<span class="ic-note">No method yet.</span>`}
-          </span>
+          ${image ? h`<img class="ic-picture" src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : cardDrawing(r.title)}
+          <span class="ic-blurb">${blurb || h`<span class="ic-note">No description yet.</span>`}</span>
         </span>
       </a>`;
   });
@@ -434,6 +428,9 @@ async function recipeForm(id) {
         <label>Serves <input name="servings" type="number" min="1" inputmode="numeric" value="${r.servings ?? ""}"></label>
         <label>Minutes <input name="minutes" type="number" min="0" inputmode="numeric" value="${r.minutes ?? ""}"></label>
       </div>
+      <label>Menu blurb <span class="hint">a line or two for the recipe card</span>
+        <textarea name="blurb" rows="2" maxlength="160">${r.blurb ?? ""}</textarea>
+      </label>
       <label>Ingredients <span class="hint">one per line, like “2 cups flour”</span>
         <textarea name="ingredients" rows="10">${(r.ingredients ?? []).join("\n")}</textarea>
       </label>
@@ -451,6 +448,7 @@ async function submitRecipe(form) {
   const number = (v) => (v === "" ? null : Number(v));
   const recipe = {
     title: f.title.trim(),
+    blurb: f.blurb.trim() || null,
     servings: number(f.servings),
     minutes: number(f.minutes),
     ingredients: f.ingredients.split("\n").map((s) => s.trim()).filter(Boolean),

@@ -2,7 +2,7 @@
 param([int]$Port = 8123)
 $root = Split-Path -Parent $PSScriptRoot
 $swap = @{ '/vendor/supabase.js' = '/test/fake-supabase.js'; '/config.js' = '/test/config.js' }
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.ts'='text/javascript; charset=utf-8'; '.css'='text/css'; '.json'='application/json' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.ts'='text/javascript; charset=utf-8'; '.css'='text/css'; '.json'='application/json'; '.png'='image/png' }
 $l = [System.Net.HttpListener]::new(); $l.Prefixes.Add("http://localhost:$Port/"); $l.Start()
 Write-Host "http://localhost:$Port/"
 while ($l.IsListening) {

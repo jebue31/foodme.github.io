@@ -408,9 +408,9 @@ async function emptyAccountTests() {
 
 async function photoTests() {
   const data = db();
-  data.recipes[0].image_url = "http://localhost:8123/test/photo.png";
+  data.recipes[0].image_url = `${location.origin}/test/photo.png`;
   data.recipes[1].image_url = "javascript:alert(1)";
-  data.recipes[2].image_url = "http://localhost:8123/missing-photo.jpg";
+  data.recipes[2].image_url = `${location.origin}/missing-photo.jpg`;
   win().localStorage.setItem("fake", JSON.stringify(data));
   await load();
   await until(() => $$(".recipe-card").length && $$(".recipe-card svg.ic-drawing").length === $$(".recipe-card").length - 1, "dead photo swapped");
@@ -419,10 +419,17 @@ async function photoTests() {
   $(".recipe-card img").closest("a").click();
   await until(() => $(".recipe-sheet"), "photo recipe");
   check("the photo sits inside the recipe card", !!$(".recipe-sheet .sheet-photo img") && !$("img.hero"));
+  await until(() => $(".sheet-photo img").naturalWidth, "photo loaded");
   $(".sheet-photo").click();
   check("tapping the photo shows it full size", $("#photo-view").open);
+  check("the full photo is named for screen readers", $("#photo-view").getAttribute("aria-label").startsWith("Photo of") && $("#photo-view img").alt.startsWith("Photo of"));
   $("#photo-view img").click();
-  check("tapping the full photo closes it", !$("#photo-view").open);
+  await until(() => !$("#photo-view"), "photo closed");
+  check("tapping the full photo closes it", true);
+  $(".sheet-photo").click();
+  $(".photo-close").click();
+  await until(() => !$("#photo-view"), "photo closed by button");
+  check("the close button closes it", true);
   await go(`#/recipes/${data.recipes[2].id}`, () => $(".recipe-sheet"));
   await until(() => !$(".sheet-photo"), "dead photo removed");
   check("a dead photo becomes a drawing on the recipe page", !!$(".sheet-drawing svg"));

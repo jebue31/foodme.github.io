@@ -205,10 +205,6 @@ const drawing = (title, className) =>
 const sheetDrawing = (title) => h`<span class="sheet-drawing">${drawing(title, "")}</span>`;
 
 const deadPhotos = new Set(); // so searching doesn't ask for them again on every keystroke
-const livePhoto = (r) => {
-  const photo = safeHttpUrl(r.image_url);
-  return deadPhotos.has(photo) ? null : photo;
-};
 const stepLines = (r) => r.steps.split("\n").map((s) => s.trim()).filter(Boolean);
 const cardBlurb = (r) => r.blurb || stepLines(r)[0] || ""; // recipes with no blurb show their first step
 const counted = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : null);
@@ -216,7 +212,8 @@ const counted = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : null);
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
-    const image = livePhoto(r);
+    const photo = safeHttpUrl(r.image_url);
+    const image = deadPhotos.has(photo) ? null : photo;
     const blurb = cardBlurb(r);
     const size = [counted(r.ingredients.length, "ingredient"), counted(stepLines(r).length, "step")].filter(Boolean).join(" · ");
     return h`
@@ -400,7 +397,7 @@ async function recipeDetail(id) {
   const r = recipeById(id);
   if (!r) return notFound();
   const steps = stepLines(r);
-  const image = livePhoto(r);
+  const image = safeHttpUrl(r.image_url); // always tried here, in case a card's photo only failed for a moment
   const source = safeHttpUrl(r.source_url);
   const meta = [r.minutes ? `${r.minutes} minutes` : null, r.servings ? `Serves ${r.servings}` : null].filter(Boolean).join(" · ");
   shell("recipes", h`
@@ -425,8 +422,7 @@ async function recipeDetail(id) {
         </section>
       </div>
       ${source ? h`<p><a href="${source}" target="_blank" rel="noopener noreferrer nofollow">View original</a></p>` : ""}
-    </article>
-    ${image ? h`<dialog id="photo-view"><img src="${image}" alt="" referrerpolicy="no-referrer"></dialog>` : ""}`);
+    </article>`);
 }
 
 async function recipeForm(id) {
@@ -811,7 +807,19 @@ const actions = {
     el.closest(".kinetic").classList.toggle("still", motionPaused);
     el.textContent = motionLabel();
   },
-  "enlarge-photo": () => document.getElementById("photo-view").showModal(),
+  "enlarge-photo": (el) => {
+    const photo = el.querySelector("img");
+    if (!photo.naturalWidth) return; // still loading, or dead
+    const title = `Photo of ${el.closest(".ic-head").querySelector("h1").textContent}`;
+    const viewer = document.createElement("dialog");
+    viewer.id = "photo-view";
+    viewer.setAttribute("aria-label", title);
+    viewer.innerHTML = h`<button class="photo-close" aria-label="Close the photo">×</button>
+      <img src="${photo.src}" alt="${title}" referrerpolicy="no-referrer">`.s;
+    viewer.addEventListener("close", () => viewer.remove());
+    root.append(viewer);
+    viewer.showModal();
+  },
   "enter-by-hand": (el) => {
     state.draft = { source_url: el.dataset.url };
     go("#/recipes/new");

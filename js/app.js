@@ -392,20 +392,52 @@ async function submitImport(form) {
   }
 }
 
+/* What's crossed off is kept on this device, so a phone that sleeps mid-recipe doesn't lose your place.
+   It lapses after 12 hours or if the recipe is edited, so the next cook starts clean. */
+const PROGRESS_KEPT_MS = 12 * 60 * 60 * 1000;
+const progressKey = (id) => `foodme-cook-${id}`;
+
+function loadProgress(r) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(progressKey(r.id)));
+    if (saved?.edited === r.updated_at && Date.now() - saved.at < PROGRESS_KEPT_MS) {
+      return { used: new Set(saved.used), done: new Set(saved.done) };
+    }
+    localStorage.removeItem(progressKey(r.id));
+  } catch { /* storage unavailable: ticks just last for this view */ }
+  return { used: new Set(), done: new Set() };
+}
+
+function markNextStep(sheet) {
+  const steps = [...sheet.querySelectorAll(".ic-right li")];
+  steps.forEach((li) => li.removeAttribute("aria-current"));
+  steps.find((li) => !li.querySelector("input").checked)?.setAttribute("aria-current", "step");
+}
+
+function saveProgress(sheet) {
+  const ticked = (selector) => [...sheet.querySelectorAll(selector)].flatMap((box, i) => (box.checked ? [i] : []));
+  const used = ticked(".ingredient-tick");
+  const done = ticked(".step-tick");
+  sheet.querySelector(".clear-steps").hidden = !used.length && !done.length;
+  markNextStep(sheet);
+  const r = recipeById(sheet.dataset.id);
+  try {
+    if (used.length || done.length) localStorage.setItem(progressKey(r.id), JSON.stringify({ edited: r.updated_at, at: Date.now(), used, done }));
+    else localStorage.removeItem(progressKey(r.id));
+  } catch { /* as above */ }
+}
+
 async function recipeDetail(id) {
   await ensureRecipes();
   const r = recipeById(id);
   if (!r) return notFound();
   const steps = stepLines(r);
+  const { used, done } = loadProgress(r);
   const image = safeHttpUrl(r.image_url); // always tried here, in case a card's photo only failed for a moment
   const source = safeHttpUrl(r.source_url);
   const meta = [r.minutes ? `${r.minutes} minutes` : null, r.servings ? `Serves ${r.servings}` : null].filter(Boolean).join(" · ");
   shell("recipes", h`
-    <a class="back" href="#/recipes">All recipes</a>
-    <div class="recipe-tools actions">
-      <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
-    </div>
-    <article class="index-card recipe-sheet">
+    <article class="index-card recipe-sheet" data-id="${r.id}">
       <header class="ic-head">
         <h1>${r.title}</h1>${meta ? h`<small>${meta}</small>` : ""}
         ${image ? h`<button class="sheet-photo" data-action="enlarge-photo" aria-label="See the photo full size"><img src="${image}" alt="" referrerpolicy="no-referrer"></button>` : sheetDrawing(r.title)}
@@ -413,16 +445,27 @@ async function recipeDetail(id) {
       <div class="ic-body">
         <section class="ic-left">
           <h2>Ingredients</h2>
-          ${r.ingredients.length ? h`<ul>${r.ingredients.map((i) => h`<li>${i}</li>`)}</ul>` : h`<p class="ic-note">None listed.</p>`}
+          ${r.ingredients.length ? h`<ul>${r.ingredients.map((text, i) => h`
+            <li><label class="ingredient"><input class="ingredient-tick" type="checkbox" ${used.has(i) ? "checked" : ""}><span>${text}</span></label></li>`)}</ul>` : h`<p class="ic-note">None listed.</p>`}
         </section>
         ${BRACE}
         <section class="ic-right">
-          <h2>Method</h2>
-          ${steps.length ? h`<ol>${steps.map((s) => h`<li>${s}</li>`)}</ol>` : h`<p class="ic-note">None listed.</p>`}
+          <div class="method-head">
+            <h2>Method</h2>
+            <button class="link clear-steps" data-action="clear-steps" ${used.size || done.size ? "" : "hidden"}>Start over</button>
+          </div>
+          ${steps.length || r.ingredients.length ? h`<p class="tap-note">Tap a step or ingredient to cross it off.</p>` : ""}
+          ${steps.length ? h`<ol>${steps.map((s, i) => h`
+            <li><label class="step"><input class="step-tick" type="checkbox" ${done.has(i) ? "checked" : ""}><span class="step-num">${i + 1}</span><span class="step-text">${s}</span></label></li>`)}</ol>` : h`<p class="ic-note">None listed.</p>`}
         </section>
       </div>
       ${source ? h`<p><a href="${source}" target="_blank" rel="noopener noreferrer nofollow">View original</a></p>` : ""}
-    </article>`);
+    </article>`, { tools: h`
+      <div class="actions">
+        <a class="button" href="#/recipes">Back to all recipes</a>
+        <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
+      </div>` });
+  markNextStep(document.querySelector(".recipe-sheet"));
 }
 
 async function recipeForm(id) {
@@ -794,6 +837,11 @@ const render = guarded(async () => {
 
 const actions = {
   "auth-mode": (el) => authView(el.dataset.mode),
+  "clear-steps": (el) => {
+    const sheet = el.closest(".recipe-sheet");
+    sheet.querySelectorAll("input[type=checkbox]").forEach((box) => { box.checked = false; });
+    saveProgress(sheet);
+  },
   "sign-out": () => api.signOut(),
   "sign-out-all": () => api.signOut("global"),
   "export-recipes": () => exportRecipes(),
@@ -886,6 +934,8 @@ const forms = {
 };
 
 document.addEventListener("click", (e) => {
+  // Dragging over a step or ingredient to copy its words shouldn't cross it off.
+  if (e.target.closest(".step-text, .ingredient span") && !getSelection().isCollapsed) e.preventDefault();
   const el = e.target.closest("[data-action]");
   if (el && el.dataset.action !== "tick") guarded(actions[el.dataset.action])(el);
   e.target.closest("#photo-view")?.close();
@@ -897,6 +947,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("change", (e) => {
   if (e.target.dataset?.action === "tick") guarded(actions.tick)(e.target);
+  else if (e.target.matches?.(".step-tick, .ingredient-tick")) saveProgress(e.target.closest(".recipe-sheet"));
 });
 document.addEventListener("submit", (e) => {
   const handler = forms[e.target.id];

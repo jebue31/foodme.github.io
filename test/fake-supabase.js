@@ -56,7 +56,7 @@
     constructor(table) { Object.assign(this, { table, op: "select", filters: [], payload: null, one: false, sort: null }); }
     select() { return this; }
     insert(p) { this.op = "insert"; this.payload = [p].flat(); return this; }
-    update(p) { this.op = "update"; this.payload = p; return this; }
+    update(p) { this.op = "update"; this.payload = { ...p, updated_at: new Date().toISOString() }; return this; }
     delete() { this.op = "delete"; return this; }
     eq(k, v) { this.filters.push((r) => r[k] === v); return this; }
     gte(k, v) { this.filters.push((r) => r[k] >= v); return this; }

@@ -144,7 +144,6 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .import { padding: .9rem; margin-bottom: 1rem; display: grid; gap: .4rem; }
 .search { margin-bottom: 1rem; }
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(320px, calc(25% - .75rem))), 1fr)); gap: 1rem; }
-.recipe-tools { justify-content: flex-end; margin-bottom: .75rem; }
 .recipe-form { padding: 1.25rem; margin-top: 1rem; display: grid; gap: 1rem; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .delete-recipe { margin-top: 2.5rem; }
@@ -154,10 +153,11 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
    --lift raises each printed line to just under the text. */
 .index-card {
   --rule: 1.5rem; --lift: .22rem; --top: .6rem; --pad: .9rem;
-  --paper: #fdf8ec; --blue: #dfe9f1; --head: #e8a79e; --red: #d0584a; --pen: #1a130d; --label: #a8392c;
-  display: block; min-width: 0; padding: var(--top) var(--pad) .75rem;
+  --paper: #fdf8ec; --blue: #dfe9f1; --head: #e8a79e; --red: #d0584a; --pen-red: #c2371a; --pen: #1a130d; --label: #a8392c;
+  --lines: repeating-linear-gradient(to bottom, transparent 0 calc(var(--rule) - 1px), var(--blue) calc(var(--rule) - 1px) var(--rule));
+  color-scheme: light; display: block; min-width: 0; padding: var(--top) var(--pad) .75rem;
   color: var(--pen); text-decoration: none; font: 1rem/var(--rule) var(--type); font-variant-numeric: lining-nums;
-  background: var(--paper) repeating-linear-gradient(to bottom, transparent 0 calc(var(--rule) - 1px), var(--blue) calc(var(--rule) - 1px) var(--rule)) 0 calc(var(--top) - var(--lift));
+  background: var(--paper) var(--lines) 0 calc(var(--top) - var(--lift));
   border-radius: 3px; box-shadow: 0 1px 2px rgb(40 25 10 / .25), 0 6px 14px rgb(40 25 10 / .12);
 }
 @media (prefers-color-scheme: dark) { .index-card { --paper: #f3ead6; --blue: #d3dfe8; } }
@@ -180,7 +180,7 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .ic-blurb { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; overflow-wrap: anywhere; }
 
 /* the full recipe: the same card, as long as it needs to be */
-.recipe-sheet { --rule: 1.85rem; --pad: 1.4rem; font-size: 1.1rem; padding-bottom: 1.25rem; }
+.recipe-sheet { --rule: 1.85rem; --pad: 1.4rem; --stuck-top: 3.3rem; font-size: 1.1rem; padding-bottom: 1.25rem; }
 .recipe-sheet .ic-head h1 { font-size: 1.5rem; }
 .recipe-sheet .ic-head small { font-size: .9rem; white-space: normal; }
 /* the photo is clipped to the corner of the card, so the recipe comes first; tap for the full size */
@@ -200,8 +200,41 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
   font-size: 1.4rem; line-height: 1; color: #fff; background: rgb(0 0 0 / .6); border: 0; border-radius: 50%;
 }
 .recipe-sheet h2 { font: 800 .85rem/var(--rule) var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--label); }
-.recipe-sheet ul { margin: 0; padding: 0; list-style: none; }
-.recipe-sheet ol { margin: 0; padding-left: 1.7rem; }
+.recipe-sheet ul, .recipe-sheet ol { margin: 0; padding: 0; list-style: none; }
+/* each column carries its own printed lines, so its text stays on them when the ingredients stick */
+.recipe-sheet .ic-left, .recipe-sheet .ic-right { background: var(--paper) var(--lines) 0 calc(var(--lift) * -1) local; }
+/* the ingredients stay in view below the page links while a long method scrolls */
+.recipe-sheet .ic-left {
+  position: sticky; top: var(--stuck-top); align-self: start; z-index: 2; max-height: calc(100vh - var(--stuck-top)); max-height: calc(100dvh - var(--stuck-top)); overflow-y: auto;
+  margin-left: calc(var(--pad) * -1); padding-left: var(--pad);
+}
+.method-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.clear-steps { font-size: .85rem; line-height: var(--rule); color: var(--label); }
+/* crossing off, like a red pen on the card. Touchscreens tap the whole row and show no boxes;
+   a mouse also gets a circle around each step number and a box beside each ingredient. */
+.tap-note { font-size: .85rem; font-style: italic; color: #54483e; }
+.step, .ingredient { position: relative; display: flex; font: inherit; cursor: pointer; }
+.step { gap: .5rem; margin-inline: -.3rem; padding-inline: .3rem; }
+.ingredient { gap: .45rem; }
+.step input, .ingredient input { position: absolute; left: 0; top: .2rem; width: 1px; height: 1px; opacity: 0; }
+.step-num { position: relative; flex: none; width: 1.5rem; font-weight: 700; text-align: center; }
+.step-text { flex: 1; min-width: 0; }
+li[aria-current] .step { background: rgb(250 222 100 / .5); }
+.step input:focus-visible ~ .step-num, .ingredient input:focus-visible + span { outline: 2px solid var(--pen-red); outline-offset: 1px; }
+.step input:checked ~ .step-num { color: #7a6d60; }
+.step input:checked ~ .step-num::after {
+  content: "\2713\fe0e"; position: absolute; left: .15rem; top: -.5rem; color: var(--pen-red); font: 800 1.7rem/1 var(--type); transform: rotate(6deg);
+}
+.step input:checked ~ .step-text, .ingredient input:checked + span {
+  text-decoration-line: line-through; text-decoration-color: var(--pen-red); text-decoration-thickness: 2px;
+}
+/* a finished step folds down to one line; tap it to bring it back */
+.step input:checked ~ .step-text { overflow: hidden; font-size: .85em; white-space: nowrap; text-overflow: ellipsis; }
+@media (hover: hover) and (pointer: fine) {
+  .tap-note { display: none; }
+  .step-num { align-self: flex-start; height: 1.5rem; margin-top: calc((var(--rule) - 1.5rem) / 2 - var(--lift)); font: 800 .85rem/calc(1.5rem - 3px) var(--sans); background: #fff; border: 1.5px solid #8d7f71; border-radius: 50%; }
+  .ingredient input { position: static; flex: none; width: 1rem; height: 1rem; margin-top: calc((var(--rule) - 1rem) / 2 - var(--lift)); opacity: 1; accent-color: var(--pen-red); }
+}
 .recipe-sheet p { margin: 0; }
 .recipe-sheet a { color: var(--label); }
 
@@ -319,6 +352,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .tabs { order: -1; flex-basis: 100%; }
   .tab { flex: 1; justify-content: center; padding-inline: .3rem; }
   .page-head > :not(.tabs) { margin-left: auto; }
+  .page-head > .actions { flex-basis: 100%; justify-content: space-between; margin-left: 0; }
   /* the week controls would make the sticky row too tall on a phone */
   .page-head:has(.week-nav) { position: static; }
   .week-nav [data-action="clear-checked"] { order: 1; }
@@ -326,6 +360,17 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   /* on a phone the recipe columns stack, so the bracket lies down and points at the method */
   .recipe-sheet { --pad: 1rem; }
   .recipe-sheet .ic-body { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  /* a compact strip that stays at the top of the screen, so the page links let go of it */
+  .page-head:has(.actions) { position: static; }
+  .recipe-sheet { --stuck-top: 0px; }
+  .recipe-sheet .ic-left {
+    max-height: 38vh; margin-inline: calc(var(--pad) * -1); padding: 0 var(--pad) .4rem; font-size: .88rem; line-height: 1.3;
+    background: var(--paper); border-bottom: 2px solid var(--head);
+  }
+  .recipe-sheet .ic-left h2 { line-height: 1.6rem; }
+  .recipe-sheet .ic-left ul { columns: 2; column-gap: 1.25rem; }
+  .recipe-sheet .ic-left li { padding-bottom: .2rem; break-inside: avoid; }
+  .recipe-sheet .ic-right { margin-inline: calc(var(--pad) * -1); padding-inline: var(--pad); }
   .recipe-sheet .brace { grid-template-rows: none; grid-template-columns: 1fr 1fr; height: var(--rule); margin-block: 0; }
   .recipe-sheet .brace span::before, .recipe-sheet .brace span::after { left: auto; right: auto; width: auto; height: auto; border-width: 0; border-radius: 0; }
   .recipe-sheet .brace span::before { top: 0; bottom: calc(50% - var(--w)); }

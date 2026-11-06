@@ -24,9 +24,11 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
 Recipe page QoL, uncommitted in the checkout on purpose until the owner reviews it: Back to all
 recipes and Edit as buttons in the page links row (phone: Back left, Edit right), ingredients
 that stay in view (phone: compact strip, and the page links stop sticking there), and tick boxes
-on method steps, kept on the device for 12 hours or until the method is edited. Open question:
-crossing ingredients off. Auto-matching them to ticked steps was advised against, because
-matching words is unreliable; tapping an ingredient to cross it off was recommended. Live on 2026-11-06: recipe
+on method steps, kept on the device for 12 hours or until the method is edited. Owner's decision:
+boxes on computers, tap the row on touchscreens with a small note, for steps and ingredients.
+Not auto-matching ingredients to steps, because matching words is unreliable. The owner dislikes
+the number beside the box and is choosing a step style from six mockups (a private artifact).
+Live on 2026-11-06: recipe
 cards, code review fixes, redeployed `import-recipe`, and on the recipe page a small clipped
 photo (tap for full size) or an olive drawing, plus ingredient and step counts on the cards.
 Known gap: the phone Back gesture leaves the recipe instead of closing the full-size photo.

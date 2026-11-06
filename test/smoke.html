@@ -104,6 +104,23 @@ async function bannerTests() {
   await until(() => $(".page-head"), "reload for read count");
   await sleep(100);
   check("loading the page reads each table once", win().fakeReads.recipes === 1 && win().fakeReads.profiles === 1 && win().fakeReads.meal_plan === 1, JSON.stringify(win().fakeReads));
+  const loadWith = async (events) => {
+    win().localStorage.setItem("fake-load-events", JSON.stringify(events));
+    await load();
+    await sleep(300);
+  };
+  await loadWith(["TOKEN_REFRESHED", "INITIAL_SESSION"]);
+  check("a page opened with an expired session still draws", !!$(".page-head"));
+  check("an expired session reads each table once", win().fakeReads.recipes === 1 && win().fakeReads.profiles === 1, JSON.stringify(win().fakeReads));
+  await loadWith(["INITIAL_SESSION", "SIGNED_IN"]);
+  check("the events arriving the other way round still draw once", !!$(".page-head") && win().fakeReads.recipes === 1, JSON.stringify(win().fakeReads));
+  await loadWith(["PASSWORD_RECOVERY", "INITIAL_SESSION"]);
+  check("a password reset link asks for a new password", text().includes("Choose a new password"));
+  await loadWith(["INITIAL_SESSION", "PASSWORD_RECOVERY"]);
+  check("a password reset link works in either order", text().includes("Choose a new password"));
+  win().localStorage.removeItem("fake-load-events");
+  await load();
+  await until(() => $(".page-head"), "reload after load order tests");
 
   await go("#/recipes", () => $(".recipe-card"));
   check("ticker is moving", doc().getAnimations().some((a) => a.animationName === "slide" && a.playState === "running"));

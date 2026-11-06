@@ -1037,6 +1037,7 @@ if (!api.configured) {
       </div>
     </main>`.s;
 } else {
+  let pageDrawn = false;
   // supabase-js can deadlock if it's called from inside this callback, so defer the work.
   api.sb.auth.onAuthStateChange((event, session) => {
     const wasUser = state.session?.user?.id;
@@ -1049,8 +1050,12 @@ if (!api.configured) {
       refreshTonight();
     }
     if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
-    // On load a saved session arrives as SIGNED_IN then INITIAL_SESSION, and a tab refocus repeats SIGNED_IN.
-    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && wasUser && wasUser === session?.user?.id) return;
+    const sameUser = wasUser === session?.user?.id;
+    if (event === "SIGNED_IN" && sameUser) return; // tab refocus
+    // On load a good session sends SIGNED_IN first, so this would draw the page twice. An expired one
+    // sends only TOKEN_REFRESHED, which draws nothing, so this has to draw it then.
+    if (event === "INITIAL_SESSION" && pageDrawn && sameUser) return;
+    pageDrawn = true;
     setTimeout(render, 0);
   });
 }

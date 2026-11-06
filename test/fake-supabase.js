@@ -112,11 +112,12 @@
       auth: {
         onAuthStateChange(fn) {
           listeners.push(fn);
-          // supabase-js restores a saved session with SIGNED_IN before it sends INITIAL_SESSION
-          setTimeout(() => {
-            if (getSession()) fn("SIGNED_IN", getSession());
-            fn("INITIAL_SESSION", getSession());
-          }, 0);
+          // supabase-js restores a saved session before it sends INITIAL_SESSION: SIGNED_IN if the
+          // session is still good, or TOKEN_REFRESHED if it had to renew an expired one.
+          // Tests can set "fake-load-events" to try other orders.
+          const usual = getSession() ? ["SIGNED_IN", "INITIAL_SESSION"] : ["INITIAL_SESSION"];
+          const events = JSON.parse(localStorage.getItem("fake-load-events")) ?? usual;
+          setTimeout(() => events.forEach((event) => fn(event, getSession())), 0);
           return { data: { subscription: { unsubscribe() {} } } };
         },
         async signInWithPassword({ email, password }) {

@@ -52,6 +52,7 @@
     emit(event, s);
   };
 
+  window.fakeReads = {};
   class Query {
     constructor(table) { Object.assign(this, { table, op: "select", filters: [], payload: null, one: false, sort: null }); }
     select() { return this; }
@@ -66,8 +67,12 @@
     single() { this.one = true; return this; }
     maybeSingle() { this.one = true; return this; }
     upsert(p) { this.op = "upsert"; this.payload = p; return this; }
-    then(ok, fail) { return Promise.resolve().then(() => this.run()).then(ok, fail); }
+    then(ok, fail) {
+      const networkDelay = new Promise((done) => setTimeout(done, this.op === "select" ? 5 : 0));
+      return networkDelay.then(() => this.run()).then(ok, fail);
+    }
     run() {
+      if (this.op === "select") window.fakeReads[this.table] = (window.fakeReads[this.table] ?? 0) + 1;
       const session = getSession();
       if (window.fakeFail) return { data: null, error: { message: window.fakeFail } };
       if (!session) return { data: null, error: { message: "not signed in" } };
@@ -107,7 +112,11 @@
       auth: {
         onAuthStateChange(fn) {
           listeners.push(fn);
-          setTimeout(() => fn("INITIAL_SESSION", getSession()), 0);
+          // supabase-js restores a saved session with SIGNED_IN before it sends INITIAL_SESSION
+          setTimeout(() => {
+            if (getSession()) fn("SIGNED_IN", getSession());
+            fn("INITIAL_SESSION", getSession());
+          }, 0);
           return { data: { subscription: { unsubscribe() {} } } };
         },
         async signInWithPassword({ email, password }) {

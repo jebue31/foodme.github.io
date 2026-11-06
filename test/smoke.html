@@ -100,6 +100,10 @@ async function bannerTests() {
   storage.getItem = realGet;
   check("Hi link opens Profile", true);
   check("changing page doesn't ask the database again", queries === 0, `${queries} queries`);
+  await load();
+  await until(() => $(".page-head"), "reload for read count");
+  await sleep(100);
+  check("loading the page reads each table once", win().fakeReads.recipes === 1 && win().fakeReads.profiles === 1 && win().fakeReads.meal_plan === 1, JSON.stringify(win().fakeReads));
 
   await go("#/recipes", () => $(".recipe-card"));
   check("ticker is moving", doc().getAnimations().some((a) => a.animationName === "slide" && a.playState === "running"));

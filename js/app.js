@@ -1049,7 +1049,8 @@ if (!api.configured) {
       refreshTonight();
     }
     if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
-    if (event === "SIGNED_IN" && wasUser === session?.user?.id) return; // tab refocus
+    // On load a saved session arrives as SIGNED_IN then INITIAL_SESSION, and a tab refocus repeats SIGNED_IN.
+    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && wasUser && wasUser === session?.user?.id) return;
     setTimeout(render, 0);
   });
 }

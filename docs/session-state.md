@@ -64,5 +64,5 @@ shopping. Don't commit the photos: this repo is public.
 - `sed` can strip backslashes from regexes, and awk `-v` breaks on Windows paths.
 - The built-in browser never picked up the GitHub sign-in. Chrome worked.
 - Touch dragging is intentionally unsupported on phones.
-- GitHub Pages can cancel or fail a deploy when two pushes land seconds apart, so put the
-  notes in the same push or wait for the first deploy. A new push retries a failed deploy.
+- A push seconds after another cancels the first Pages deploy, so put notes in the same push.
+  On 2026-11-06 the next two deploys failed with "try again later", cause unknown.

@@ -21,9 +21,9 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Opening the site with an expired saved login is fixed (it showed a blank page briefly on 2026-11-06).
-It's tested on the fake backend only, as are password reset links. To confirm it for real, open
-the site a couple of hours after last using it.
+Opening the site with an expired saved login is fixed (it showed a blank page briefly on 2026-11-06)
+and confirmed live: a load that renewed the login drew the page. Password reset links are tested on
+the fake backend only.
 Recipe page QoL is live on 2026-11-06, not yet tried on a real phone. Back to all recipes and
 Edit are buttons in the page links row (phone: Back left, Edit right). Ingredients stay in view
 (phone: compact strip, and the page links stop sticking there). Steps and ingredients cross off

@@ -21,11 +21,10 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Branch `fix/review-findings` sits on top of `feature/menu-cards` and holds the cards plus all
-the code review fixes. It is waiting for the owner's OK to go on `main`. The owner ran the
-blurb SQL on the real database on 2026-11-06. Two fixes and the imported blurbs only apply
-once `import-recipe` is redeployed from the editor; nothing breaks before that. The owner
-should click Rebuild from this week on the grocery list.
+Nothing being built. The recipe cards and code review fixes went live on 2026-11-06, and the
+owner ran the blurb SQL. Owner to do: save one blurb on the live site to confirm the column,
+click Rebuild from this week on the grocery list, and redeploy `import-recipe` from the
+editor. Two import fixes and imported blurbs only apply after that; nothing breaks before.
 
 Tested on real data on 2026-11-05 by Claude and the owner: all pages, phone and desktop sizes,
 week switching, search, pause, ticking, and web import without saving. Saving, deleting and

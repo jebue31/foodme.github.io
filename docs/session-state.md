@@ -21,9 +21,12 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Next, the owner has quality-of-life ideas for the recipe cards. Not pushed yet, uncommitted in
-the checkout on purpose: Back to all recipes and Edit as buttons in the page links row (phone:
-Back left, Edit right). The owner wants these to go out with the QoL changes. Live on 2026-11-06: recipe
+Recipe page QoL, uncommitted in the checkout on purpose until the owner reviews it: Back to all
+recipes and Edit as buttons in the page links row (phone: Back left, Edit right), ingredients
+that stay in view (phone: compact strip, and the page links stop sticking there), and tick boxes
+on method steps, kept on the device for 12 hours or until the method is edited. Open question:
+crossing ingredients off. Auto-matching them to ticked steps was advised against, because
+matching words is unreliable; tapping an ingredient to cross it off was recommended. Live on 2026-11-06: recipe
 cards, code review fixes, redeployed `import-recipe`, and on the recipe page a small clipped
 photo (tap for full size) or an olive drawing, plus ingredient and step counts on the cards.
 Known gap: the phone Back gesture leaves the recipe instead of closing the full-size photo.

@@ -21,14 +21,14 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Recipe page QoL, uncommitted in the checkout on purpose until the owner reviews it: Back to all
-recipes and Edit as buttons in the page links row (phone: Back left, Edit right), ingredients
-that stay in view (phone: compact strip, and the page links stop sticking there), and crossing
-off steps and ingredients. Owner's choices: red pen tick and line, finished steps fold to one
-line, the next step is highlighted. A mouse gets circled numbers and ingredient boxes; touch
-devices tap the row, with a small note. Progress stays on the device for 12 hours or until the
-recipe is edited. Not auto-matching ingredients to steps, because matching words is unreliable.
-Live on 2026-11-06: recipe
+Recipe page QoL is live on 2026-11-06, not yet tried on a real phone. Back to all recipes and
+Edit are buttons in the page links row (phone: Back left, Edit right). Ingredients stay in view
+(phone: compact strip, and the page links stop sticking there). Steps and ingredients cross off
+with a red pen line, finished steps fold to one line, and the next step is highlighted. A mouse
+gets circled numbers and ingredient boxes; touch devices tap the row, with a small note. Progress
+stays on the device for 12 hours or until the recipe is edited. Ingredients aren't auto-matched
+to steps, because matching words is unreliable.
+Also live on 2026-11-06: recipe
 cards, code review fixes, redeployed `import-recipe`, and on the recipe page a small clipped
 photo (tap for full size) or an olive drawing, plus ingredient and step counts on the cards.
 Known gap: the phone Back gesture leaves the recipe instead of closing the full-size photo.
@@ -71,5 +71,7 @@ shopping. Don't commit the photos: this repo is public.
 - `sed` can strip backslashes from regexes, and awk `-v` breaks on Windows paths.
 - The built-in browser never picked up the GitHub sign-in. Chrome worked.
 - Touch dragging is intentionally unsupported on phones.
+- 	est/smoke.html photo tests time out if the app window is covered, because the pane draws no
+  frames. Keep it visible, or take screenshots during the run to force frames.
 - A push seconds after another cancels the first Pages deploy, so put notes in the same push.
   On 2026-11-06 the next two deploys failed with "try again later", cause unknown.

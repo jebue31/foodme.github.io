@@ -5,7 +5,7 @@ Keep it under about 60 lines. Replace old status instead of adding to it.
 This repo is public, so this file is too. Never put secrets or personal details here.
 The to-do list and the owner's ideas are in `docs/roadmap.md`.
 
-Last updated: 2026-11-05
+Last updated: 2026-11-06
 
 ## Goal
 A recipe app: save recipes or import them from the web, plan meals by day, and build
@@ -21,7 +21,9 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Next, the owner has quality-of-life ideas for the recipe cards. Live on 2026-11-06: recipe
+Next, the owner has quality-of-life ideas for the recipe cards. Not pushed yet, uncommitted in
+the checkout on purpose: Back to all recipes and Edit as buttons in the page links row (phone:
+Back left, Edit right). The owner wants these to go out with the QoL changes. Live on 2026-11-06: recipe
 cards, code review fixes, redeployed `import-recipe`, and on the recipe page a small clipped
 photo (tap for full size) or an olive drawing, plus ingredient and step counts on the cards.
 Known gap: the phone Back gesture leaves the recipe instead of closing the full-size photo.

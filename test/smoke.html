@@ -128,6 +128,7 @@ async function recipeTests() {
 
   const soup = $$(".recipe-card").find((c) => c.textContent.includes("Tomato soup"));
   check("card has a drawing and no bracket", !!soup.querySelector("svg.ic-drawing") && !soup.querySelector(".brace"));
+  check("a card counts its ingredients and steps", soup.querySelector(".ic-size").textContent === "8 ingredients · 5 steps");
   check("a card with no blurb shows the first step", soup.querySelector(".ic-blurb").textContent.startsWith("Soften the onion"));
   soup.click();
   await until(() => $(".recipe-sheet"), "recipe page");
@@ -406,17 +407,24 @@ async function emptyAccountTests() {
 
 async function photoTests() {
   const data = db();
-  data.recipes[0].image_url = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  data.recipes[0].image_url = "http://localhost:8123/test/photo.png";
   data.recipes[1].image_url = "javascript:alert(1)";
   data.recipes[2].image_url = "http://localhost:8123/missing-photo.jpg";
   win().localStorage.setItem("fake", JSON.stringify(data));
   await load();
-  await until(() => $$(".recipe-card").length && $$(".recipe-card img").length === 1, "dead photo swapped");
+  await until(() => $$(".recipe-card").length && $$(".recipe-card svg.ic-drawing").length === $$(".recipe-card").length - 1, "dead photo swapped");
   check("a card shows the recipe photo", $$(".recipe-card img").length === 1);
   check("a dead photo becomes a drawing", $$(".recipe-card svg.ic-drawing").length === $$(".recipe-card").length - 1);
   $(".recipe-card img").closest("a").click();
   await until(() => $(".recipe-sheet"), "photo recipe");
-  check("the recipe page shows the photo", !!$("img.hero"));
+  check("the photo sits inside the recipe card", !!$(".recipe-sheet .sheet-photo img") && !$("img.hero"));
+  $(".sheet-photo").click();
+  check("tapping the photo shows it full size", $("#photo-view").open);
+  $("#photo-view img").click();
+  check("tapping the full photo closes it", !$("#photo-view").open);
+  await go(`#/recipes/${data.recipes[2].id}`, () => $(".recipe-sheet"));
+  await until(() => !$(".sheet-photo"), "dead photo removed");
+  check("a dead photo leaves the recipe page", !$(".has-photo"));
 
   const planned = db();
   const now = new Date();

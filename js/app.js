@@ -204,7 +204,9 @@ const cardDrawing = (title) =>
   new Safe(`<svg class="ic-picture ic-drawing" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
 
 const deadPhotos = new Set(); // so searching doesn't ask for them again on every keystroke
-const cardBlurb = (r) => r.blurb || r.steps.trim().split("\n")[0]; // recipes with no blurb show their first step
+const stepLines = (r) => r.steps.split("\n").map((s) => s.trim()).filter(Boolean);
+const cardBlurb = (r) => r.blurb || stepLines(r)[0] || ""; // recipes with no blurb show their first step
+const counted = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : null);
 
 function recipeCards(recipes) {
   return recipes.map((r) => {
@@ -212,6 +214,7 @@ function recipeCards(recipes) {
     const photo = safeHttpUrl(r.image_url);
     const image = deadPhotos.has(photo) ? null : photo;
     const blurb = cardBlurb(r);
+    const size = [counted(r.ingredients.length, "ingredient"), counted(stepLines(r).length, "step")].filter(Boolean).join(" · ");
     return h`
       <a class="recipe-card index-card" href="#/recipes/${r.id}">
         <span class="ic-head"><strong>${r.title}</strong>${meta ? h`<small>${meta}</small>` : ""}</span>
@@ -219,6 +222,7 @@ function recipeCards(recipes) {
           ${image ? h`<img class="ic-picture" src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : cardDrawing(r.title)}
           <span class="ic-blurb">${blurb || h`<span class="ic-note">No description yet.</span>`}</span>
         </span>
+        ${size ? h`<span class="ic-size">${size}</span>` : ""}
       </a>`;
   });
 }
@@ -391,7 +395,7 @@ async function recipeDetail(id) {
   await ensureRecipes();
   const r = recipeById(id);
   if (!r) return notFound();
-  const steps = r.steps.split("\n").map((s) => s.trim()).filter(Boolean);
+  const steps = stepLines(r);
   const image = safeHttpUrl(r.image_url);
   const source = safeHttpUrl(r.source_url);
   const meta = [r.minutes ? `${r.minutes} minutes` : null, r.servings ? `Serves ${r.servings}` : null].filter(Boolean).join(" · ");
@@ -400,9 +404,11 @@ async function recipeDetail(id) {
     <div class="recipe-tools actions">
       <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
     </div>
-    ${image ? h`<img class="hero" src="${image}" alt="" referrerpolicy="no-referrer">` : ""}
     <article class="index-card recipe-sheet">
-      <header class="ic-head"><h1>${r.title}</h1>${meta ? h`<small>${meta}</small>` : ""}</header>
+      <header class="ic-head ${image ? "has-photo" : ""}">
+        <h1>${r.title}</h1>${meta ? h`<small>${meta}</small>` : ""}
+        ${image ? h`<button class="sheet-photo" data-action="enlarge-photo" aria-label="See the photo full size"><img src="${image}" alt="" referrerpolicy="no-referrer"></button>` : ""}
+      </header>
       <div class="ic-body">
         <section class="ic-left">
           <h2>Ingredients</h2>
@@ -415,7 +421,8 @@ async function recipeDetail(id) {
         </section>
       </div>
       ${source ? h`<p><a href="${source}" target="_blank" rel="noopener noreferrer nofollow">View original</a></p>` : ""}
-    </article>`);
+    </article>
+    ${image ? h`<dialog id="photo-view"><img src="${image}" alt="" referrerpolicy="no-referrer"></dialog>` : ""}`);
 }
 
 async function recipeForm(id) {
@@ -800,6 +807,7 @@ const actions = {
     el.closest(".kinetic").classList.toggle("still", motionPaused);
     el.textContent = motionLabel();
   },
+  "enlarge-photo": () => document.getElementById("photo-view").showModal(),
   "enter-by-hand": (el) => {
     state.draft = { source_url: el.dataset.url };
     go("#/recipes/new");
@@ -868,6 +876,7 @@ const forms = {
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (el && el.dataset.action !== "tick") guarded(actions[el.dataset.action])(el);
+  e.target.closest("#photo-view")?.close();
   // A click on the backdrop closes the picker. Clicks on its padding also land on the dialog, so check the position.
   if (e.target.id === "picker") {
     const { left, right, top, bottom } = e.target.getBoundingClientRect();
@@ -913,6 +922,10 @@ const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
 
 // A photo that no longer loads becomes the drawing. Load errors don't bubble, so this listens on the way down.
 document.addEventListener("error", (e) => {
+  if (e.target.matches?.(".sheet-photo img")) {
+    e.target.closest(".ic-head").classList.remove("has-photo");
+    e.target.parentElement.remove();
+  }
   if (!e.target.matches?.("img.ic-picture")) return;
   deadPhotos.add(e.target.getAttribute("src"));
   e.target.outerHTML = cardDrawing(e.target.closest(".recipe-card").querySelector("strong").textContent).s;

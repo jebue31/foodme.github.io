@@ -21,10 +21,10 @@ one combined grocery list. It is a hobby project with limited funds, so prefer f
   jukebox page links, lined recipe cards, one page width, grocery columns on wide screens.
 
 ## In progress
-Branch `feature/recipe-photo` is waiting for the owner's OK: a small clipped photo on the
-recipe page, tap for full size, and ingredient and step counts on the recipe cards. Next, the
-owner has quality-of-life ideas for the recipe cards. The recipe cards, code review fixes and
-redeployed `import-recipe` went live on 2026-11-06 and passed checks on real data.
+Next, the owner has quality-of-life ideas for the recipe cards. Live on 2026-11-06: recipe
+cards, code review fixes, redeployed `import-recipe`, and on the recipe page a small clipped
+photo (tap for full size) or an olive drawing, plus ingredient and step counts on the cards.
+Known gap: the phone Back gesture leaves the recipe instead of closing the full-size photo.
 Deleting a recipe also removes it from the plan, so re-importing Chicken Tenders and Mac and
 Cheese took them off it. The owner can re-add those meals, then Rebuild the grocery list.
 

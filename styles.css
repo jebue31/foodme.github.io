@@ -184,10 +184,11 @@ label > input, label > textarea { margin-top: .25rem; font-weight: 400; font-siz
 .recipe-sheet .ic-head h1 { font-size: 1.5rem; }
 .recipe-sheet .ic-head small { font-size: .9rem; }
 /* the photo is clipped to the corner of the card, so the recipe comes first; tap for the full size */
-.recipe-sheet .ic-head.has-photo { min-height: calc(var(--rule) * 3); padding-right: 8rem; align-content: flex-start; }
+.recipe-sheet .ic-head { min-height: calc(var(--rule) * 3); padding-right: 8rem; align-content: flex-start; }
+.sheet-photo, .sheet-drawing { position: absolute; top: 0; right: 0; width: 7rem; height: calc(var(--rule) * 3 - .35rem); }
+.sheet-drawing svg { display: block; width: 100%; height: 100%; }
 .sheet-photo {
-  position: absolute; top: 0; right: 0; z-index: 1; width: 7rem; height: calc(var(--rule) * 3 - .35rem); min-height: 0; padding: 0;
-  overflow: hidden; cursor: zoom-in; background: #fff; border: 3px solid #fff; border-radius: 2px;
+  z-index: 1; min-height: 0; padding: 0; overflow: hidden; cursor: zoom-in; background: #fff; border: 3px solid #fff; border-radius: 2px;
   box-shadow: 0 1px 4px rgb(40 25 10 / .35); transform: rotate(1.5deg);
 }
 .sheet-photo:hover { border-color: #fff; }

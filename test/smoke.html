@@ -132,6 +132,7 @@ async function recipeTests() {
   check("a card with no blurb shows the first step", soup.querySelector(".ic-blurb").textContent.startsWith("Soften the onion"));
   soup.click();
   await until(() => $(".recipe-sheet"), "recipe page");
+  check("a recipe with no photo shows its drawing", !!$(".sheet-drawing svg") && !$(".sheet-photo"));
   check("full recipe shows all ingredients", $$(".recipe-sheet ul li").length === 8);
   check("full recipe shows numbered method", $$(".recipe-sheet ol li").length === 5);
   check("recipe page has page links", $$(".tabs .tab").length === 3);
@@ -424,7 +425,7 @@ async function photoTests() {
   check("tapping the full photo closes it", !$("#photo-view").open);
   await go(`#/recipes/${data.recipes[2].id}`, () => $(".recipe-sheet"));
   await until(() => !$(".sheet-photo"), "dead photo removed");
-  check("a dead photo leaves the recipe page", !$(".has-photo"));
+  check("a dead photo becomes a drawing on the recipe page", !!$(".sheet-drawing svg"));
 
   const planned = db();
   const now = new Date();

@@ -200,10 +200,15 @@ async function submitAuth(form) {
 /* ---------- recipes ---------- */
 
 const BRACE = h`<span class="brace" aria-hidden="true"><span></span><span></span></span>`;
-const cardDrawing = (title) =>
-  new Safe(`<svg class="ic-picture ic-drawing" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
+const drawing = (title, className) =>
+  new Safe(`<svg class="ic-drawing ${className}" viewBox="0 0 64 64" aria-hidden="true">${drawingFor(title)}</svg>`);
+const sheetDrawing = (title) => h`<span class="sheet-drawing">${drawing(title, "")}</span>`;
 
 const deadPhotos = new Set(); // so searching doesn't ask for them again on every keystroke
+const livePhoto = (r) => {
+  const photo = safeHttpUrl(r.image_url);
+  return deadPhotos.has(photo) ? null : photo;
+};
 const stepLines = (r) => r.steps.split("\n").map((s) => s.trim()).filter(Boolean);
 const cardBlurb = (r) => r.blurb || stepLines(r)[0] || ""; // recipes with no blurb show their first step
 const counted = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : null);
@@ -211,15 +216,14 @@ const counted = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : null);
 function recipeCards(recipes) {
   return recipes.map((r) => {
     const meta = [r.minutes ? `${r.minutes} min` : null, r.servings ? `serves ${r.servings}` : null].filter(Boolean).join(" · ");
-    const photo = safeHttpUrl(r.image_url);
-    const image = deadPhotos.has(photo) ? null : photo;
+    const image = livePhoto(r);
     const blurb = cardBlurb(r);
     const size = [counted(r.ingredients.length, "ingredient"), counted(stepLines(r).length, "step")].filter(Boolean).join(" · ");
     return h`
       <a class="recipe-card index-card" href="#/recipes/${r.id}">
         <span class="ic-head"><strong>${r.title}</strong>${meta ? h`<small>${meta}</small>` : ""}</span>
         <span class="ic-body">
-          ${image ? h`<img class="ic-picture" src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : cardDrawing(r.title)}
+          ${image ? h`<img class="ic-picture" src="${image}" alt="" loading="lazy" referrerpolicy="no-referrer">` : drawing(r.title, "ic-picture")}
           <span class="ic-blurb">${blurb || h`<span class="ic-note">No description yet.</span>`}</span>
         </span>
         ${size ? h`<span class="ic-size">${size}</span>` : ""}
@@ -396,7 +400,7 @@ async function recipeDetail(id) {
   const r = recipeById(id);
   if (!r) return notFound();
   const steps = stepLines(r);
-  const image = safeHttpUrl(r.image_url);
+  const image = livePhoto(r);
   const source = safeHttpUrl(r.source_url);
   const meta = [r.minutes ? `${r.minutes} minutes` : null, r.servings ? `Serves ${r.servings}` : null].filter(Boolean).join(" · ");
   shell("recipes", h`
@@ -405,9 +409,9 @@ async function recipeDetail(id) {
       <a class="button" href="#/recipes/${r.id}/edit">Edit</a>
     </div>
     <article class="index-card recipe-sheet">
-      <header class="ic-head ${image ? "has-photo" : ""}">
+      <header class="ic-head">
         <h1>${r.title}</h1>${meta ? h`<small>${meta}</small>` : ""}
-        ${image ? h`<button class="sheet-photo" data-action="enlarge-photo" aria-label="See the photo full size"><img src="${image}" alt="" referrerpolicy="no-referrer"></button>` : ""}
+        ${image ? h`<button class="sheet-photo" data-action="enlarge-photo" aria-label="See the photo full size"><img src="${image}" alt="" referrerpolicy="no-referrer"></button>` : sheetDrawing(r.title)}
       </header>
       <div class="ic-body">
         <section class="ic-left">
@@ -922,13 +926,11 @@ const dropMeal = guarded(async ({ recipeId, mealId }, { day, slot }) => {
 
 // A photo that no longer loads becomes the drawing. Load errors don't bubble, so this listens on the way down.
 document.addEventListener("error", (e) => {
-  if (e.target.matches?.(".sheet-photo img")) {
-    e.target.closest(".ic-head").classList.remove("has-photo");
-    e.target.parentElement.remove();
-  }
-  if (!e.target.matches?.("img.ic-picture")) return;
+  if (!e.target.matches?.("img.ic-picture, .sheet-photo img")) return;
   deadPhotos.add(e.target.getAttribute("src"));
-  e.target.outerHTML = cardDrawing(e.target.closest(".recipe-card").querySelector("strong").textContent).s;
+  const title = e.target.closest(".index-card").querySelector("strong, h1").textContent;
+  if (e.target.matches(".ic-picture")) e.target.outerHTML = drawing(title, "ic-picture").s;
+  else e.target.parentElement.outerHTML = sheetDrawing(title).s;
 }, true);
 
 document.addEventListener("dragstart", (e) => {

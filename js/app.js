@@ -108,7 +108,7 @@ async function ensureProfile() {
 
 /* ---------- shell ---------- */
 
-const PAGE_LINKS = [["recipes", "A1", "Recipes"], ["plan", "B2", "Plan"], ["grocery", "C3", "Grocery"]];
+const PAGE_LINKS = [["recipes", "Recipes"], ["plan", "Plan"], ["grocery", "Grocery"]];
 
 function shell(active, content, { title, tools = "" } = {}) {
   const headline = HEADLINES[active] ?? DEFAULT_HEADLINE;
@@ -122,8 +122,7 @@ function shell(active, content, { title, tools = "" } = {}) {
       <div class="page-head">
         ${title ? h`<h1>${title}</h1>` : ""}
         <nav class="tabs" aria-label="Main">
-          ${PAGE_LINKS.map(([id, code, label]) => h`
-            <a href="#/${id}" class="tab" ${current(id)}><span aria-hidden="true">${code}</span>${label}</a>`)}
+          ${PAGE_LINKS.map(([id, label]) => h`<a href="#/${id}" class="tab" ${current(id)}>${label}</a>`)}
         </nav>
         ${tools}
       </div>
